@@ -4,7 +4,7 @@
 
 ## 手机上使用
 
-1. 将 `MJ-Spiderman-Android-0.1.0.apk` 传到手机并安装。
+1. 在手机浏览器 [下载 APK](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.1.0/MJ-Spiderman-Android-0.1.0.apk)，或打开 [安卓发布页](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/android-v0.1.0)，在 Assets 中选择 `MJ-Spiderman-Android-0.1.0.apk`。下载完成后点击安装，按系统提示核对安装来源授权。`Source code (zip)` 是源码，不是手机安装包。
 2. 打开“MJ 蜘蛛侠特效”，阅读说明，点“首次设置：开启无障碍服务”。
 3. 在系统无障碍设置中找到同名服务，由你手动开启，然后回到应用。
 4. 先点两个试听按钮确认画面和声音，再在应用内测试框切到英文输入 `mj`。
@@ -20,6 +20,12 @@
 不记录文本、不上传数据，不声明 INTERNET、存储、麦克风、通知、普通悬浮窗权限；使用无障碍服务自带的非触摸、非焦点悬浮层。保存的只有开关偏好；音效文件会放入应用缓存。动画与音效沿用原作者资源。
 
 识别的是系统提供的输入框文本变化，和 Windows 版读取实际按键不同。粘贴 mj 也可能触发；中文输入法内部候选栏或自绘控件不一定提供事件。
+
+## 后续更新
+
+应用没有内置自动更新。从 [全部发布版本](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases) 选择新版 Android APK 下载，尝试直接覆盖安装；更新需要包名、签名一致且版本号满足系统要求。请勿先卸载旧版，卸载会清除应用设置。更新后回应用检查无障碍服务，再测试试听和输入框。
+
+当前仍为 0.1.0 试用版，文档更新不代表 APK 功能已更新或完成真机验证。[返回首页查看 Windows 下载与两端说明](../README.md)。
 
 ## 构建
 
