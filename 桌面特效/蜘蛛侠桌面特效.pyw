@@ -2,12 +2,14 @@
 """
 蜘蛛侠桌面特效（窗口版）
 - 主控制窗口（深色面板）：特效开关按钮；关闭窗口即退出程序（无论开关状态）
-- 全局监听键盘：输入 mj 后按回车 → 屏幕正上方播放透明蜘蛛侠（带声音）
+- 全局监听键盘：默认输入 mj 立即触发，可切换回车模式； → 屏幕正上方播放透明蜘蛛侠（带声音）
 - 双特效随机：内置两个蜘蛛侠动画（原版倒挂 / 荡蛛丝版），每次触发随机抽取一个播放
 - 持续生效：应用常驻，无论触发多少次都重播；播放中再触发会先清掉旧画面声音再从头播
 - 透明实现：Win32 UpdateLayeredWindow（逐像素 alpha），参考 desk-pet 项目方案
 """
-import os, sys, time, queue, random, ctypes
+import os, sys, time, queue, random, ctypes, json, traceback
+from pathlib import Path
+from trigger import TriggerMatcher
 from ctypes import wintypes
 import tkinter as tk
 import winsound
@@ -30,6 +32,8 @@ except ImportError:
     sys.exit(1)
 
 # 单实例保护
+ctypes.windll.kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR]
+ctypes.windll.kernel32.CreateMutexW.restype = wintypes.HANDLE
 _mutex = ctypes.windll.kernel32.CreateMutexW(None, False, 'SpidermanMjEffect')
 if ctypes.windll.kernel32.GetLastError() == 183:
     sys.exit(0)
@@ -41,6 +45,18 @@ else:
     HERE = os.path.dirname(os.path.abspath(__file__))
     LOG = os.path.join(HERE, 'effect.log')
 
+DATA_DIR = Path(os.environ.get('MJ_EFFECT_DATA_DIR', str(Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'MjSpidermanEffect')))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+LOG = str(DATA_DIR / 'effect.log')
+CONFIG = DATA_DIR / 'settings.json'
+try:
+    settings = json.loads(CONFIG.read_text(encoding='utf-8'))
+    if not isinstance(settings, dict):
+        settings = {}
+except (OSError, ValueError):
+    settings = {}
+matcher = TriggerMatcher('enter' if settings.get('mode') == 'enter' else 'instant')
+sound_enabled = settings.get('sound', True) is not False
 ICON = os.path.join(HERE, 'icon.ico')
 TRIGGER = 'mj'
 QUIT_WORD = 'stopmj'
@@ -70,6 +86,25 @@ GRAY = '#3a4150'
 # ---------------- Win32 ----------------
 user32 = ctypes.windll.user32
 gdi32 = ctypes.windll.gdi32
+# Explicit pointer-sized Win32 signatures are required on 64-bit Windows.
+user32.GetDC.argtypes = [wintypes.HWND]
+user32.GetDC.restype = wintypes.HDC
+user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HDC]
+user32.GetForegroundWindow.restype = wintypes.HWND
+user32.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
+user32.SetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int, wintypes.LONG]
+user32.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+user32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT]
+gdi32.CreateCompatibleDC.argtypes = [wintypes.HDC]
+gdi32.CreateCompatibleDC.restype = wintypes.HDC
+gdi32.CreateDIBSection.argtypes = [wintypes.HDC, ctypes.c_void_p, wintypes.UINT, ctypes.POINTER(ctypes.c_void_p), wintypes.HANDLE, wintypes.DWORD]
+gdi32.CreateDIBSection.restype = wintypes.HBITMAP
+gdi32.SelectObject.argtypes = [wintypes.HDC, wintypes.HANDLE]
+gdi32.SelectObject.restype = wintypes.HANDLE
+gdi32.DeleteObject.argtypes = [wintypes.HANDLE]
+gdi32.DeleteDC.argtypes = [wintypes.HDC]
+user32.UpdateLayeredWindow.argtypes = [wintypes.HWND, wintypes.HDC, ctypes.c_void_p, ctypes.c_void_p, wintypes.HDC, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
+user32.UpdateLayeredWindow.restype = wintypes.BOOL
 GWL_EXSTYLE = -20
 WS_EX_LAYERED = 0x00080000
 WS_EX_TRANSPARENT = 0x00000020
@@ -113,7 +148,7 @@ class BLENDFUNCTION(ctypes.Structure):
 def make_premultiplied_bgra(img):
     arr = np.asarray(img, dtype=np.uint16)
     a = arr[..., 3:4]
-    premul = (arr[..., 0:3] * a) >> 8
+    premul = (arr[..., 0:3] * a + 127) // 255
     out = np.empty(arr.shape[:2] + (4,), dtype=np.uint8)
     out[..., 0] = premul[..., 2]
     out[..., 1] = premul[..., 1]
@@ -205,26 +240,29 @@ def log(msg):
         pass
 
 
+pressed_keys = set()
+
+
 def on_press(key):
-    global typed, anim_id
-    try:
-        ch = key.char
-    except AttributeError:
-        # 回车键：确认输入
-        if key == keyboard.Key.enter:
-            if typed.endswith(QUIT_WORD):
-                log('exit by stopmj')
-                q.put('quit')
-                typed = ''
-                return
-            if typed.endswith(TRIGGER) and enabled_flag:
-                anim_id += 1
-                q.put('go')
-            typed = ''
+    # Ignore auto-repeat, shortcuts and navigation; callbacks only enqueue work.
+    if key in pressed_keys:
         return
-    if not ch or not ch.isprintable():
+    pressed_keys.add(key)
+    if any(user32.GetAsyncKeyState(vk) & 0x8000 for vk in (0x11, 0x12, 0x5B, 0x5C)):
+        matcher.reset()
         return
-    typed = (typed + ch.lower())[-8:]
+    ch = getattr(key, 'char', None)
+    if ch is None:
+        if key in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r):
+            return
+        ch = 'enter' if key == keyboard.Key.enter else 'backspace' if key == keyboard.Key.backspace else 'reset'
+    action = matcher.feed(ch, enabled=enabled_flag, context=user32.GetForegroundWindow())
+    if action:
+        q.put(action)
+
+
+def on_release(key):
+    pressed_keys.discard(key)
 
 
 # ================ 窗口 ================
@@ -234,8 +272,8 @@ sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
 # 缩放：小屏幕缩小特效帧；蜘蛛侠出现在屏幕正上方（按每个特效自己的尺寸计算）
 def effect_geometry(eff):
     cw, ch = eff['cell']
-    sc = 2 if sh - 80 < ch else 1
-    fw, fh = cw // sc, ch // sc
+    sc = min(1.0, max(0.2, (sh - 80) / ch), max(0.2, (sw - 40) / cw))
+    fw, fh = max(1, int(cw * sc)), max(1, int(ch * sc))
     return fw, fh, (sw - fw) // 2, 20
 
 FW, FH, WIN_X, WIN_Y = effect_geometry(EFFECTS[0])
@@ -263,6 +301,7 @@ def force_topmost():
 def show_effect(eff):
     """播放一个特效（eff 来自 EFFECTS，每次触发随机抽取）"""
     global anim_id
+    anim_id += 1
     my_id = anim_id
     fw, fh, wx, wy = effect_geometry(eff)
     blank = Image.new('RGBA', (fw, fh), (0, 0, 0, 0))
@@ -274,17 +313,18 @@ def show_effect(eff):
         pass
     force_topmost()
     try:
-        winsound.PlaySound(eff['wav'], winsound.SND_FILENAME | winsound.SND_ASYNC)
+        if sound_enabled:
+            winsound.PlaySound(eff['wav'], winsound.SND_FILENAME | winsound.SND_ASYNC)
     except Exception:
         pass
-    start = time.time()
+    start = time.monotonic()
     last_frame = -1
 
     def step():
         nonlocal last_frame
         if my_id != anim_id:
             return
-        i = int((time.time() - start) * eff['fps'])
+        i = int((time.monotonic() - start) * eff['fps'])
         if i >= eff['count']:
             layered.update(blank, wx, wy)
             return
@@ -309,7 +349,7 @@ def poll():
     try:
         while True:
             m = q.get_nowait()
-            if m == 'go':
+            if m == 'go' and enabled_flag:
                 show_effect(random.choice(EFFECTS))
             elif m == 'quit':
                 on_close()
@@ -323,6 +363,7 @@ def poll():
 def on_close():
     """关闭窗口（X）即退出程序，无论开关状态"""
     log('exit by window close')
+    winsound.PlaySound(None, winsound.SND_PURGE)
     try:
         listener.stop()
     except Exception:
@@ -335,52 +376,94 @@ def on_close():
     root.destroy()
 
 
-CW, CH = 380, 280
-root.title('蜘蛛侠特效')
+root.title('蜘蛛侠特效 · MJ')
 root.configure(bg=BG)
 root.resizable(False, False)
-root.geometry('%dx%d+%d+%d' % (CW, CH, (sw - CW) // 2, (sh - CH) // 2))
 root.protocol('WM_DELETE_WINDOW', on_close)
 try:
     root.iconbitmap(ICON)
 except Exception:
     pass
 
-# 标题
-tk.Label(root, text='🕷️ 蜘蛛侠特效', bg=BG, fg=FG,
-         font=('Microsoft YaHei', 18, 'bold')).pack(pady=(26, 2))
-tk.Label(root, text='输入 mj 后按回车，蜘蛛侠从天而降',
-         bg=BG, fg=MUTED, font=('Microsoft YaHei', 10)).pack()
+def save_settings():
+    try:
+        CONFIG.write_text(json.dumps({'mode': matcher.mode, 'sound': sound_enabled}), encoding='utf-8')
+    except OSError:
+        status.config(text='设置暂时无法保存，本次仍可正常使用')
 
+def update_status():
+    btn.config(text='已开启 · 点击暂停' if enabled_flag else '已暂停 · 点击开启',
+               bg=GREEN if enabled_flag else GRAY,
+               fg='#08211a' if enabled_flag else FG)
+    status.config(text=('输入 mj 即刻触发' if matcher.mode == 'instant' else '输入 mj 后按回车触发')
+                  if enabled_flag else '已暂停，特效不会自动触发')
 
-def update_btn():
-    if enabled_flag:
-        btn.config(text='特效：已开启', bg=GREEN, activebackground='#25b96e', fg='#08211a')
-    else:
-        btn.config(text='特效：已关闭', bg=GRAY, activebackground='#2c3342', fg='#c9d1e0')
-
+def clear_effect():
+    global anim_id
+    anim_id += 1
+    winsound.PlaySound(None, winsound.SND_PURGE)
+    layered.update(Image.new('RGBA', (layered._cap_w, layered._cap_h)), WIN_X, WIN_Y)
 
 def toggle():
     global enabled_flag
     enabled_flag = not enabled_flag
-    update_btn()
-    status.config(text='特效已开启，输入 mj 回车触发' if enabled_flag else '特效已关闭，窗口关闭即退出')
+    matcher.reset()
+    if not enabled_flag:
+        clear_effect()
+    update_status()
 
+def change_mode():
+    matcher.mode = mode_var.get()
+    matcher.reset()
+    update_status()
+    save_settings()
 
-btn = tk.Button(root, text='', font=('Microsoft YaHei', 14, 'bold'),
-                command=toggle, bd=0, relief='flat', cursor='hand2',
-                padx=34, pady=10, activeforeground='#ffffff')
-btn.pack(pady=(20, 8))
-status = tk.Label(root, text='', bg=BG, fg=MUTED, font=('Microsoft YaHei', 10))
-status.pack()
-tk.Label(root, text='关闭本窗口即退出程序', bg=BG, fg='#5a6270',
-         font=('Microsoft YaHei', 9)).pack(pady=(4, 0))
-update_btn()
-status.config(text='特效已开启，输入 mj 回车触发' if enabled_flag else '特效已关闭，窗口关闭即退出')
+def change_sound():
+    global sound_enabled
+    sound_enabled = sound_var.get()
+    if not sound_enabled:
+        winsound.PlaySound(None, winsound.SND_PURGE)
+    save_settings()
 
+body = tk.Frame(root, bg=BG, padx=32, pady=24)
+body.pack(fill='both', expand=True)
+tk.Label(body, text='蜘蛛侠特效', bg=BG, fg=FG, font=('Microsoft YaHei', 20, 'bold')).pack(anchor='w')
+tk.Label(body, text='MJ  /  两套原版动画随机播放', bg=BG, fg='#a8b1c2', font=('Microsoft YaHei', 10)).pack(anchor='w', pady=(6, 20))
+btn = tk.Button(body, command=toggle, font=('Microsoft YaHei', 13, 'bold'), bd=0,
+                padx=20, pady=12, activebackground='#a1edc1', cursor='hand2')
+btn.pack(fill='x')
+status = tk.Label(body, bg=BG, fg=FG, font=('Microsoft YaHei', 10))
+status.pack(pady=(10, 18))
+mode_var = tk.StringVar(value=matcher.mode)
+for label, value in [('输入 mj 立即触发', 'instant'), ('输入 mj 后按回车触发', 'enter')]:
+    tk.Radiobutton(body, text=label, variable=mode_var, value=value, command=change_mode,
+                   bg=BG, fg=FG, selectcolor=PANEL, activebackground=BG, activeforeground=FG,
+                   font=('Microsoft YaHei', 11), pady=3).pack(anchor='w')
+sound_var = tk.BooleanVar(value=sound_enabled)
+tk.Checkbutton(body, text='播放声音', variable=sound_var, command=change_sound,
+               bg=BG, fg=FG, selectcolor=PANEL, activebackground=BG, activeforeground=FG,
+               font=('Microsoft YaHei', 11)).pack(anchor='w', pady=(8, 14))
+previews = tk.Frame(body, bg=BG)
+previews.pack(fill='x')
+for i, label in enumerate(['试听倒挂版', '试听荡蛛丝版']):
+    tk.Button(previews, text=label, command=lambda i=i: show_effect(EFFECTS[i]),
+              bg=PANEL, fg=FG, activebackground=GRAY, activeforeground=FG,
+              font=('Microsoft YaHei', 10), bd=0, padx=14, pady=10,
+              cursor='hand2').pack(side='left', expand=True, fill='x', padx=(0, 8) if i == 0 else 0)
+tk.Label(body, text='最小化后仍可触发；关闭窗口即可退出。\n英文输入 mj；退出口令：stopmj + 回车。',
+         bg=BG, fg='#a8b1c2', justify='left', font=('Microsoft YaHei', 9)).pack(anchor='w', pady=(18, 0))
+update_status()
+root.update_idletasks()
+cw, ch = max(420, root.winfo_reqwidth()), root.winfo_reqheight()
+root.geometry('%dx%d+%d+%d' % (cw, ch, max(0, (sw-cw)//2), max(0, (sh-ch)//2)))
+
+def report_error(exc, value, tb):
+    log(''.join(traceback.format_exception(exc, value, tb)))
+    status.config(text='播放遇到问题，请重新打开程序')
+root.report_callback_exception = report_error
 
 # ---------------- 启动 ----------------
-listener = keyboard.Listener(on_press=on_press)
+listener = keyboard.Listener(on_press=on_press, on_release=on_release)
 listener.daemon = True
 listener.start()
 log('app started')
@@ -395,6 +478,10 @@ if '--test' in sys.argv:
         pass
     eff = EFFECTS[idx] if idx is not None else random.choice(EFFECTS)
     root.after(2500, lambda: show_effect(eff))
+if '--smoke-test' in sys.argv:
+    root.after(500, lambda: show_effect(EFFECTS[0]))
+    root.after(4000, lambda: show_effect(EFFECTS[1]))
+    root.after(7500, on_close)
 root.after(50, poll)
 root.mainloop()
 log('app exited')

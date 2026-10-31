@@ -19,3 +19,8 @@ MJ聊天.html
 
 蜘蛛侠特效/
 
+__pycache__/
+*.pyc
+/dist/
+/.venv/
+
