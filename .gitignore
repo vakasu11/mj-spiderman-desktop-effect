@@ -23,4 +23,7 @@ __pycache__/
 *.pyc
 /dist/
 /.venv/
+*.apk
+*.idsig
+*.keystore
 

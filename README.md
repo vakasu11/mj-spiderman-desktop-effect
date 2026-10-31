@@ -48,4 +48,8 @@ python "桌面特效/蜘蛛侠桌面特效.pyw" --smoke-test
 
 ## 原版
 
-未修改的原版基准为提交 `688b8a00bd2d3ccc55d7407494c5ec6220ac0991`，可从 Git 历史恢复。本项目当前只交付 Windows 版，未包含安卓 APK。
+未修改的原版基准为提交 `688b8a00bd2d3ccc55d7407494c5ec6220ac0991`，可从 Git 历史恢复。
+
+## Android 试用版
+
+已新增面向 iQOO 15 / Android 16 的 Android 11+ 试用版，包含无障碍文本识别、透明悬浮特效、暂停和试听。已经完成编译、签名和素材检查，尚未经过真机或模拟器运行验收。安装与权限说明、构建步骤见 [android/README.md](android/README.md)。Android 识别输入框文本，Windows 识别实际按键，两端独立运行。
