@@ -6,7 +6,7 @@
 
 输入 `mj`，蜘蛛侠从天而降 🎉 每次随机播放一套原版动画！
 
-**[🖥️ 下载 Windows 版](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/windows-v1.1.2)** · **[📱 下载安卓试用版](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/android-v0.2.0)** · **[📦 全部版本](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases)**
+**[🖥️ 下载 Windows 版](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/windows-v1.1.2)** · **[📱 下载安卓试用版](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/android-v0.3.0)** · **[📦 全部版本](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases)**
 
 </div>
 
@@ -14,7 +14,7 @@
 
 ✨ 一个有趣的桌面特效小应用：Windows 启动后监听按键，连续输入 `mj`，屏幕顶部就会出现带声音的透明蜘蛛侠动画，播放完自动消失。支持最小化运行、反复触发、暂停和静音，也提供独立的安卓试用版。
 
-> Windows 默认**输入 mj 立即触发**，不用回车，也可切换成回车触发。安卓通过无障碍服务识别输入框文字，当前仍为试用版，尚未经过真机或模拟器运行验收。
+> Windows 默认**输入 mj 立即触发**，不用回车，也可切换成回车触发。Android 0.3.0 针对连续输入漏触发、服务连接和声音提示进行修复，仍需在手机上复测。
 
 ## 🎯 功能亮点
 
@@ -42,7 +42,7 @@
 | 平台 | 程序下载 | 要求与状态 |
 | --- | --- | --- |
 | 🖥️ Windows | **[直接下载 EXE](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.2/mj-spiderman.exe)** · [ZIP 使用包](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.2/mj-spiderman-windows-1.1.2.zip) | Windows 10/11 x64；已在 Windows 11 x64 检查运行 |
-| 📱 Android | **[直接下载 APK](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.2.0/mj-spiderman-android-0.2.0.apk)** | Android 11+；面向 iQOO 15 制作，尚未设备运行验收 |
+| 📱 Android | **[直接下载 APK](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.3.0/mj-spiderman-android-0.3.0.apk)** | Android 11+；面向 iQOO 15 制作，尚未设备运行验收 |
 
 Windows EXE 约 70 MB，Android APK 约 40 MB。也可以进入 [Releases](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases)，展开对应版本的 **Assets（附件）** 下载。
 
@@ -86,7 +86,7 @@ python "桌面特效/蜘蛛侠桌面特效.pyw"
 
 ### 第一步：下载并安装
 
-在手机浏览器 [下载 `mj-spiderman-android-0.2.0.apk`](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.2.0/mj-spiderman-android-0.2.0.apk)，下载完成后点击安装。如果系统要求允许该来源安装应用，请核对下载来源后按提示处理。
+在手机浏览器 [下载 `mj-spiderman-android-0.3.0.apk`](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.3.0/mj-spiderman-android-0.3.0.apk)，下载完成后点击安装。如果系统要求允许该来源安装应用，请核对下载来源后按提示处理。
 
 ### 第二步：开启服务
 
@@ -99,13 +99,17 @@ python "桌面特效/蜘蛛侠桌面特效.pyw"
 
 1. 分别点击 **“倒挂版  试听”** 和 **“荡蛛丝版  试听”**，检查画面和声音。
 2. 在应用自己的测试框切换英文输入，输入并提交 `mj`。
-3. 成功后再切换到其他应用的输入框试用。
+3. 成功后再切换到其他应用的输入框试用。连续输入 `mjmj` 时，每个新增的 `mj` 都会尝试触发；输入法合并成一次更新时只播放一次，避免叠加。
 
 主按钮控制 **暂停 / 开启特效**，声音开关控制静音。点击 **“停止并关闭无障碍服务”** 可完全停用；仅返回桌面或关闭应用界面不会主动停止服务。无需额外开启普通“显示在其他应用上层”权限。
 
 > **安卓兼容范围：** 需要输入框提供文本变化事件，不能保证所有应用、游戏或输入法都能触发。尚未提交的拼音候选、自绘输入控件可能不可用；密码输入框会跳过，锁屏或熄屏时不会新建特效。
 
-安卓手机若后台一段时间后失效，先返回应用检查服务状态，再查看系统的应用电池管理与后台限制。具体菜单名称随系统版本变化。
+Android 0.3.0 默认开启 **“输入法兼容”**，会补查当前输入框，改善候选词整段替换和漏事件的情况，可能增加耗电。应用内测试框直接识别自己的文字变化，避免依赖无障碍回传。
+
+若服务开启后很快关闭，先回应用确认已完成首次说明，再点 **“后台运行与服务帮助”** 查看应用电池和后台限制。若显示 **“系统已授权，等待连接”**，请在系统设置手动关闭服务再开启。仍失败时，点 **“复制诊断信息”** 发到 Issues 排查；诊断不含输入文字。服务开关由 Android 管理，应用不能强制开启或保证所有系统都不回收。
+
+声音使用媒体音量；应用会提示媒体音量为零或勿扰开启。**是否允许勿扰期间播放媒体，仍由系统设置决定。**
 
 [查看安卓权限说明、更新和源码构建 →](android/README.md)
 
@@ -164,7 +168,7 @@ mj-spiderman-desktop-effect/
 | Windows | 完全退出旧程序，从 Windows 发布页下载新版 EXE，替换旧文件。设置保存在 `%LOCALAPPDATA%\MjSpidermanEffect`，替换 EXE 不会主动删除设置 |
 | Android | 从 Android 发布页下载新 APK，尝试覆盖安装。需要同一包名、相同签名与符合系统要求的版本号；请勿先卸载，以免清除设置。更新后重新检查无障碍服务和后台限制 |
 
-当前下载版本为 **Windows 1.1.2 / Android 0.2.0 试用版**。Windows 1.1.2 将原版完整图案等比例放大，保留 1.1.0 的新版界面。详见 [更新记录](CHANGELOG.md)。
+当前下载版本为 **Windows 1.1.2 / Android 0.3.0 试用版**。Windows 1.1.2 将原版完整图案等比例放大，保留 1.1.0 的新版界面。详见 [更新记录](CHANGELOG.md)。
 
 ## ❓ 常见问题
 
@@ -172,10 +176,10 @@ mj-spiderman-desktop-effect/
 | --- | --- |
 | 下载后找不到程序 | 到 Releases 的 Assets 下载 EXE 或 APK；`Source code` 是源码 |
 | Windows 输入 mj 没反应 | 检查是否暂停或切到回车模式；先试听，再在记事本用英文实际按 m、j |
-| 安卓显示“尚未连接” | 按首次设置步骤手动开启系统无障碍服务，再返回应用 |
+| 安卓已授权但未连接 | 在系统设置手动关闭服务再开启，返回应用确认实际连接状态 |
 | 安卓试听正常，其他应用不触发 | 先测试本应用输入框并提交英文 mj；目标输入框可能没有可用的文本变化事件 |
-| 安卓后台失效 | 检查无障碍服务是否开启，以及系统应用电池 / 后台限制 |
-| 有画面没有声音 | 检查应用声音开关、系统音量及音频输出设备；安卓音效仍需真机确认 |
+| 安卓服务自动关闭 | 完成首次说明，查看后台运行帮助；仍关闭时复制诊断信息排查 |
+| 有画面没有声音 | 检查声音开关、媒体音量、输出设备和勿扰设置；勿扰是否允许媒体由系统决定 |
 
 仍有问题，可到 [Issues](https://github.com/vakasu11/mj-spiderman-desktop-effect/issues) 提供系统与应用版本、试听结果、应用内输入结果和复现步骤，请勿提交密码或私人输入内容。
 
@@ -184,7 +188,7 @@ mj-spiderman-desktop-effect/
 
 Windows 不联网、不记录或上传输入文字，内存识别缓冲最多 8 个字符。设置与不含键入内容的诊断日志位于 `%LOCALAPPDATA%\MjSpidermanEffect`。
 
-安卓无障碍服务具有读取其他应用控件文字的能力，需要你阅读说明并手动授权。应用不存储或上传输入文本，未声明联网、存储、麦克风、通知或普通悬浮窗权限。保存开关偏好，音效文件放在应用私有缓存。
+安卓无障碍服务具有读取其他应用控件文字的能力，需要你阅读说明并手动授权。应用不存储或上传输入文本，未声明联网、存储、麦克风、通知或普通悬浮窗权限。保存开关偏好、服务连接提示和异常类型，均不含输入文字；兼容识别仅保留内存中的文字指纹与光标元数据。音效从 APK 读取。
 
 </details>
 
@@ -192,7 +196,7 @@ Windows 不联网、不记录或上传输入文字，内存识别缓冲最多 8 
 <summary><strong>🧪 已完成的检查与验证范围</strong></summary>
 
 - **Windows：** 12 项触发逻辑测试通过；源码与最终 EXE 的两套动画播放、自动退出、实际 mj 触发、暂停和退出口令已检查。已在 Windows 11 x64 运行；未独立验证扬声器实际听感，未覆盖全部多屏、高 DPI、管理员窗口和游戏组合。
-- **Android：** 14 项文字匹配检查、编译、签名、对齐和原始素材完整性检查通过。**尚未在真机或模拟器运行验收**，画面、声音、输入法兼容与后台运行需要设备确认。
+- **Android 0.3.0：** 205 项文字匹配检查、编译、签名、对齐和 248 个原始媒体文件校验通过；与旧版签名相同。**此修复版尚未完成真机复测**，微信与输入法兼容、无障碍持续连接和音频仍需设备确认。
 
 </details>
 

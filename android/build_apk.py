@@ -41,7 +41,7 @@ compiled = work/'resources.zip'
 run(tools/'aapt2.exe','compile','--dir',root/'res','-o',compiled)
 base = work/'base.apk'
 run(tools/'aapt2.exe','link','-o',base,'-I',android_jar,'--manifest',root/'AndroidManifest.xml',
-    '--java',gen,'-A',assets,compiled)
+    '--java',gen,'-A',assets,'-0','wav',compiled)
 sources = [*root.glob('src/**/*.java'),*gen.glob('**/*.java')]
 source_list = work/'sources.txt'
 source_list.write_text('\n'.join('"'+str(p).replace('\\','/')+'"' for p in sources),encoding='utf-8')

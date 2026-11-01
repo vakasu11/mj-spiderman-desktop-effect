@@ -1,6 +1,10 @@
 package com.vakasu11.mjspiderman;
 
 import android.app.*;
+import android.media.AudioManager;
+import android.text.TextWatcher;
+import android.text.Editable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.content.*;
 import android.content.res.ColorStateList;
@@ -19,7 +23,7 @@ public final class MainActivity extends Activity {
     private static final int RED = Color.rgb(206,48,69), BORDER = Color.rgb(88,101,123);
     private static final int GREEN = Color.rgb(120,214,176);
     private LinearLayout body;
-    private TextView status, stateLabel;
+    private TextView status, stateLabel, soundHint, connectionHint;
     private Button toggle;
     private SharedPreferences prefs;
     private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -29,6 +33,8 @@ public final class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        ServiceStatus.installCrashRecorder(this);
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
         setTitle("mj-spiderman");
         prefs = getSharedPreferences("mj", MODE_PRIVATE);
         getWindow().getDecorView().setBackgroundColor(BG);
@@ -53,6 +59,8 @@ public final class MainActivity extends Activity {
             android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
             android.graphics.Insets keyboard = insets.getInsets(WindowInsets.Type.ime());
             v.setPadding(bars.left,bars.top,bars.right,Math.max(bars.bottom,keyboard.bottom));
+            View focused=getCurrentFocus();
+            if(keyboard.bottom>0&&focused instanceof EditText)v.post(()->focused.requestRectangleOnScreen(new android.graphics.Rect(0,0,focused.getWidth(),focused.getHeight()),true));
             return WindowInsets.CONSUMED;
         });
 
@@ -102,19 +110,21 @@ public final class MainActivity extends Activity {
         add(body,hero,0,12);
 
         toggle=button("开始设置",true,() -> {
-            if(MjService.current==null){explainAndOpenSettings();return;}
+            MjService service=MjService.active();
+            if(!prefs.getBoolean("disclosed",false)){explainAndOpenSettings();return;}
+            if(service==null){prefs.edit().putBoolean("enabled",true).apply();openSystemSettings();return;}
             boolean enabled=!prefs.getBoolean("enabled",false);
-            prefs.edit().putBoolean("enabled",enabled).apply();
-            MjService.current.settingsChanged();
-            updateStatus();
+            prefs.edit().putBoolean("enabled",enabled).apply();service.settingsChanged();updateStatus();
         });
         add(body,toggle,0,12);
-        add(body,button("无障碍服务设置",false,this::explainAndOpenSettings),0,24);
+        add(body,button("无障碍服务设置",false,this::explainAndOpenSettings),0,8);
+        connectionHint=text("",14,MUTED,false);add(body,connectionHint,0,12);
+        add(body,button("后台运行与服务帮助",false,this::showServiceHelp),0,24);
 
         LinearLayout soundRow=row();
         LinearLayout soundCopy=column(BG,0);
         soundCopy.addView(text("播放声音",17,FG,true));
-        soundCopy.addView(text("关闭后仅播放动画",14,MUTED,false));
+        soundHint=text("使用媒体音量",14,MUTED,false);soundCopy.addView(soundHint);
         soundRow.addView(soundCopy,new LinearLayout.LayoutParams(0,-2,1));
         Switch sound=new Switch(this);
         sound.setContentDescription("播放声音");
@@ -124,11 +134,23 @@ public final class MainActivity extends Activity {
         sound.setChecked(prefs.getBoolean("sound",true));
         sound.setOnCheckedChangeListener((b,checked) -> {
             prefs.edit().putBoolean("sound",checked).apply();
-            if(MjService.current!=null)MjService.current.settingsChanged();
+            if(MjService.active()!=null)MjService.active().settingsChanged();
         });
         soundRow.addView(sound);
         add(body,soundRow,0,24);
 
+        LinearLayout compatibilityRow=row();
+        LinearLayout compatibilityCopy=column(BG,0);
+        compatibilityCopy.addView(text("输入法兼容",17,FG,true));
+        compatibilityCopy.addView(text("补查输入框，改善漏触发；可能增加耗电",14,MUTED,false));
+        compatibilityRow.addView(compatibilityCopy,new LinearLayout.LayoutParams(0,-2,1));
+        Switch compatibility=new Switch(this);compatibility.setContentDescription("输入法兼容");
+        compatibility.setMinWidth(dp(56));compatibility.setMinHeight(dp(48));
+        compatibility.setChecked(prefs.getBoolean("compatibility",true));
+        compatibility.setThumbTintList(ColorStateList.valueOf(FG));
+        compatibility.setTrackTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},new int[]{RED,BORDER}));
+        compatibility.setOnCheckedChangeListener((b,checked)->{prefs.edit().putBoolean("compatibility",checked).apply();if(MjService.active()!=null)MjService.active().settingsChanged();});
+        compatibilityRow.addView(compatibility);add(body,compatibilityRow,0,24);
         heading("选一款，先试听");
         add(body,text("自动触发时，随机播放一款",14,MUTED,false),4,12);
         LinearLayout previews=row();
@@ -158,43 +180,84 @@ public final class MainActivity extends Activity {
         test.setPadding(dp(16),dp(12),dp(16),dp(12));
         test.setBackground(focusShape());
         test.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        test.addTextChangedListener(new TextWatcher(){
+            private String before="";
+            @Override public void beforeTextChanged(CharSequence text,int start,int count,int after){before=text.toString();}
+            @Override public void onTextChanged(CharSequence text,int start,int removed,int count){
+                MjService service=MjService.active();
+                if(service!=null)try{service.localInput(before,text,start,removed,count);}catch(RuntimeException error){ServiceStatus.note(MainActivity.this,"测试输入暂未触发，可重新连接服务");}
+                before="";
+            }
+            @Override public void afterTextChanged(Editable text){before="";}
+        });
         add(body,test,12,8);
         add(body,text("先在这里输入并提交英文 mj，成功后再到其他应用试用。",14,MUTED,false),0,24);
-        add(body,button("停止并关闭无障碍服务",false,() -> {
-            prefs.edit().putBoolean("enabled",false).apply();
-            if(MjService.current!=null)MjService.current.turnOff();
-            updateStatus();
+        add(body,button("停止并关闭无障碍服务",false,()->{
+            new AlertDialog.Builder(this).setTitle("停止特效？").setMessage("这会关闭系统无障碍服务。只想临时暂停，请使用上方的暂停按钮。")
+                .setNegativeButton("取消",null).setPositiveButton("停止并关闭",(d,w)->{
+                    prefs.edit().putBoolean("enabled",false).apply();if(MjService.active()!=null)MjService.active().turnOff();updateStatus();
+                }).show();
+        }),0,12);
+        add(body,button("复制诊断信息",false,()->{
+            String info="mj-spiderman Android 0.3.0\n系统服务开关："+(ServiceStatus.systemEnabled(this)?"开":"关")
+                +"\n实际连接："+(MjService.active()!=null?"已连接":"未连接")+"\n自动触发："+prefs.getBoolean("enabled",false)
+                +"\n输入法兼容："+prefs.getBoolean("compatibility",true)+"\n最近服务状态："+prefs.getString("service_note","尚无记录")
+                +"\n最近异常类型："+prefs.getString("last_error","无记录");
+            ((android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("mj-spiderman 诊断",info));
+            Toast.makeText(this,"已复制诊断信息，不包含输入文字",Toast.LENGTH_SHORT).show();
         }),0,20);
 
         TextView notes=text("仅在提供文字变化事件的输入框中工作，密码框会跳过。后台失效时，请检查手机的应用电池管理与服务状态。",14,MUTED,false);
         add(body,notes,0,12);
         add(body,text("本地识别，不联网、不保存输入文字。",14,MUTED,false),0,12);
-        add(body,text("0.2.0 试用版 · 尚未完成真机运行验收",13,MUTED,false),0,8);
+        add(body,text("0.3.0 修复试用版 · 兼容性仍需真机复测",13,MUTED,false),0,8);
         updateStatus();
     }
 
+    private void openSystemSettings(){startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));}
     private void explainAndOpenSettings() {
+        if(prefs.getBoolean("disclosed",false)){openSystemSettings();return;}
         new AlertDialog.Builder(this).setTitle("开启前请了解")
-            .setMessage("无障碍服务可以读取其他应用输入控件中的文字。本应用仅在本机检查光标前的 mj，跳过密码框，不记录文字、不上传数据，也没有联网权限。\n\n同意后将打开系统设置，请手动选择“mj-spiderman”并开启。你可以随时关闭服务。")
+            .setMessage("无障碍服务可以读取其他应用输入控件中的文字。本应用仅在本机识别 mj；输入法兼容模式会定期检查当前输入框，跳过密码框，不记录文字、不上传数据，也没有联网权限。\n\n同意后将打开系统设置，请手动选择“mj-spiderman”并开启。服务已开启时，完成本说明即可启用识别；你可以随时停止服务。")
             .setNegativeButton("暂不开启",null)
-            .setPositiveButton("了解，前往设置",(d,w) -> {
+            .setPositiveButton("了解，前往设置",(d,w)->{
                 prefs.edit().putBoolean("disclosed",true).putBoolean("enabled",true).apply();
-                startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+                if(MjService.active()!=null)MjService.active().settingsChanged();openSystemSettings();
             }).show();
     }
+    private void showServiceHelp(){
+        new AlertDialog.Builder(this).setTitle("服务开启后自动关闭？")
+            .setMessage("先在本应用完成首次说明，再到系统设置开启 mj-spiderman。\n\n如果仍自动关闭：在应用信息中检查电池和后台运行限制；菜单名称因 iQOO 系统版本而异。服务开关由系统管理，应用不能替你强制开启。\n\n若开关仍开但未连接，请手动关闭后重新开启。再次发生时，可复制本页诊断信息发来排查。")
+            .setNegativeButton("返回",null).setPositiveButton("打开应用信息",(d,w)->startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName())))).show();
+    }
     private void preview(int index) {
-        if(MjService.current==null)Toast.makeText(this,"请先手动开启无障碍服务",Toast.LENGTH_SHORT).show();
-        else MjService.current.preview(index);
+        MjService service=MjService.active();
+        if(service==null||!service.ready())Toast.makeText(this,"请先完成首次说明并手动开启服务",Toast.LENGTH_SHORT).show();
+        else service.preview(index);
     }
     private void updateStatus() {
         if(status==null)return;
-        boolean connected=MjService.current!=null;
-        boolean enabled=connected&&prefs.getBoolean("enabled",false);
-        String state=!connected?"服务尚未开启":enabled?"特效已开启":"特效已暂停";
+        MjService service=MjService.active();boolean bound=service!=null;
+        boolean authorized=bound||ServiceStatus.systemEnabled(this);
+        boolean disclosed=prefs.getBoolean("disclosed",false);
+        boolean enabled=bound&&disclosed&&prefs.getBoolean("enabled",false);
+        String state=!disclosed?"等待完成首次说明":!bound?(authorized?"系统已授权，等待连接":"服务已关闭"):enabled?"特效已开启":"特效已暂停";
         if(!state.contentEquals(stateLabel.getText()))stateLabel.setText(state);
         stateLabel.setTextColor(enabled?GREEN:MUTED);
-        status.setText(!connected?"先开启服务，再输入 mj 召唤特效":enabled?"输入 mj，即可召唤蜘蛛侠":"随时开启，也可以先试听");
-        toggle.setText(!connected?"开始设置":enabled?"暂停特效":"开启特效");
+        status.setText(!disclosed?"先阅读应用内说明，再开启识别":!bound?(authorized?"若一直未连接，请在系统设置关闭后再开启":"请到无障碍设置手动开启 mj-spiderman"):enabled?"输入 mj 或连续 mjmj，召唤蜘蛛侠":"随时开启，也可以先试听");
+        toggle.setText(!disclosed?"完成首次说明":!bound?(authorized?"重新连接服务":"开始设置"):enabled?"暂停特效":"开启特效");
+        if(connectionHint!=null){
+            String note=prefs.getString("service_note","");String error=prefs.getString("last_error","");
+            connectionHint.setText(bound?"服务已实际连接；系统开关与应用暂停互相独立":note.length()>0?note:"开启后请回到应用，确认显示服务已连接");
+            if(bound&&note.length()>0&&!note.equals("系统已连接服务"))connectionHint.append("\n最近提示："+note);
+            if(error.length()>0)connectionHint.append("\n曾发生服务异常，可复制诊断信息排查");
+        }
+        if(soundHint!=null){
+            AudioManager audio=(AudioManager)getSystemService(AUDIO_SERVICE);
+            String hint=audio.getStreamVolume(AudioManager.STREAM_MUSIC)==0?"媒体音量为 0，请用音量键调高":"使用媒体音量，可用音量键调整";
+            try{NotificationManager n=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);int filter=n.getCurrentInterruptionFilter();if(filter==NotificationManager.INTERRUPTION_FILTER_PRIORITY||filter==NotificationManager.INTERRUPTION_FILTER_NONE||filter==NotificationManager.INTERRUPTION_FILTER_ALARMS)hint+="\n勿扰已开启，是否出声取决于系统设置";}catch(RuntimeException ignored){}
+            if(!hint.contentEquals(soundHint.getText()))soundHint.setText(hint);
+        }
     }
     @Override protected void onResume(){super.onResume();handler.post(refresh);}
     @Override protected void onPause(){handler.removeCallbacks(refresh);super.onPause();}
