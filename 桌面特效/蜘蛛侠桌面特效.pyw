@@ -488,7 +488,7 @@ brand.pack(side='left', fill='x', expand=True)
 tk.Label(brand, text='mj-spiderman', font=('Segoe UI', 21, 'bold'),
          bg=BG, fg=FG).pack(anchor='w')
 label(brand, '输入两个字母，召唤你的蜘蛛侠', 10, MUTED).pack(anchor='w', pady=(u(3),0))
-label(header, '1.1.0', 9, MUTED).pack(side='right', anchor='n', pady=u(7))
+label(header, '1.1.2', 9, MUTED).pack(side='right', anchor='n', pady=u(7))
 
 hero = tk.Frame(body, bg=PANEL, padx=u(20), pady=u(14))
 hero.pack(fill='x')
