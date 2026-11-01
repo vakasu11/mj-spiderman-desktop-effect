@@ -51,8 +51,9 @@ tests = work/'test-classes'
 tests.mkdir(exist_ok=True)
 run(javac,'-encoding','UTF-8','-d',tests,
     root/'src/com/vakasu11/mjspiderman/TextTrigger.java',root/'tests/TextTriggerTest.java',
-    root/'src/com/vakasu11/mjspiderman/ServiceSelection.java',root/'tests/ServiceSelectionTest.java')
-for test_name in ['TextTriggerTest','ServiceSelectionTest']:
+    root/'src/com/vakasu11/mjspiderman/ServiceSelection.java',root/'tests/ServiceSelectionTest.java',
+    root/'src/com/vakasu11/mjspiderman/SurroundingTrigger.java',root/'tests/SurroundingTriggerTest.java')
+for test_name in ['TextTriggerTest','ServiceSelectionTest','SurroundingTriggerTest']:
     run(java,'-cp',tests,'com.vakasu11.mjspiderman.'+test_name)
 jar = work/'classes.jar'
 with zipfile.ZipFile(jar,'w') as z:

@@ -2,7 +2,7 @@
     android:accessibilityEventTypes="typeViewTextChanged|typeViewTextSelectionChanged|typeViewFocused|typeWindowStateChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:notificationTimeout="0"
-    android:accessibilityFlags="flagReportViewIds|flagIncludeNotImportantViews|flagRetrieveInteractiveWindows"
+    android:accessibilityFlags="flagReportViewIds|flagIncludeNotImportantViews|flagRetrieveInteractiveWindows|flagInputMethodEditor"
     android:canRetrieveWindowContent="true"
     android:settingsActivity="com.vakasu11.mjspiderman.MainActivity"
     android:description="@string/service_description" />

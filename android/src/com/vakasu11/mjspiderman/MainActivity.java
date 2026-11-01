@@ -151,6 +151,32 @@ public final class MainActivity extends Activity {
         compatibility.setTrackTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},new int[]{RED,BORDER}));
         compatibility.setOnCheckedChangeListener((b,checked)->{prefs.edit().putBoolean("compatibility",checked).apply();if(MjService.active()!=null)MjService.active().settingsChanged();});
         compatibilityRow.addView(compatibility);add(body,compatibilityRow,0,24);
+        LinearLayout wechatRow=row();LinearLayout wechatCopy=column(BG,0);
+        wechatCopy.addView(text("微信兼容模式",17,FG,true));
+        wechatCopy.addView(text("系统输入连接，需手动同意；可能增加耗电",14,MUTED,false));
+        wechatRow.addView(wechatCopy,new LinearLayout.LayoutParams(0,-2,1));
+        Switch wechatSwitch=new Switch(this);wechatSwitch.setContentDescription("微信兼容模式");
+        wechatSwitch.setMinHeight(dp(48));wechatSwitch.setMinWidth(dp(56));
+        wechatSwitch.setThumbTintList(ColorStateList.valueOf(FG));
+        wechatSwitch.setTrackTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},new int[]{RED,BORDER}));
+        wechatSwitch.setEnabled(android.os.Build.VERSION.SDK_INT>=33);
+        wechatSwitch.setChecked(prefs.getBoolean("wechat_ime",false)&&prefs.getBoolean("wechat_ime_consent",false));
+        final boolean[] updatingWechat={false};
+        wechatSwitch.setOnCheckedChangeListener((b,checked)->{
+            if(updatingWechat[0])return;
+            if(checked&&!prefs.getBoolean("wechat_ime_consent",false)){
+                updatingWechat[0]=true;wechatSwitch.setChecked(false);updatingWechat[0]=false;
+                new AlertDialog.Builder(this).setTitle("开启微信兼容？")
+                    .setMessage("这个模式使用 Android 公开的无障碍输入连接接口，检查微信普通输入框光标附近少量文字。系统接口具备编辑能力，但本应用只查询文字，不代你输入、删除或发送消息。\n\n密码和选中文字不参与识别；只在本机临时处理，不保存文字历史、不上传。系统或微信不提供连接时仍可能无法识别，无需更换现有输入法。")
+                    .setNegativeButton("暂不开启",null).setPositiveButton("同意并开启",(d,w)->{
+                        prefs.edit().putBoolean("wechat_ime_consent",true).putBoolean("wechat_ime",true).apply();wechatSwitch.setChecked(true);
+                        if(MjService.active()!=null)MjService.active().settingsChanged();
+                        Toast.makeText(this,"请将无障碍服务关闭再开启，然后到微信输入 mj",Toast.LENGTH_LONG).show();
+                    }).show();return;
+            }
+            prefs.edit().putBoolean("wechat_ime",checked).apply();if(MjService.active()!=null)MjService.active().settingsChanged();
+        });
+        wechatRow.addView(wechatSwitch);add(body,wechatRow,0,24);
         heading("选一款，先试听");
         add(body,text("自动触发时，随机播放一款",14,MUTED,false),4,12);
         LinearLayout previews=row();
@@ -200,12 +226,12 @@ public final class MainActivity extends Activity {
         }),0,12);
         add(body,button("复制诊断信息",false,()->{
             MjService service=MjService.active();
-            String info="mj-spiderman Android 0.3.1\nAndroid "+android.os.Build.VERSION.RELEASE+" / SDK "+android.os.Build.VERSION.SDK_INT
+            String info="mj-spiderman Android 0.3.2\nAndroid "+android.os.Build.VERSION.RELEASE+" / SDK "+android.os.Build.VERSION.SDK_INT
                 +"\n系统服务开关（设置项）："+ServiceStatus.stateName(ServiceStatus.userSelection(this))
                 +"\n无障碍总状态："+ServiceStatus.stateName(ServiceStatus.masterEnabled(this))
                 +"\n系统绑定列表："+(ServiceStatus.systemBound(this)?"有":"无")
                 +"\n实际连接："+(service!=null?"已连接":"未连接")+"\n自动触发："+prefs.getBoolean("enabled",false)
-                +"\n输入法兼容："+prefs.getBoolean("compatibility",true)+"\n最近服务状态："+prefs.getString("service_note","尚无记录")
+                +"\n微信兼容开关："+prefs.getBoolean("wechat_ime",false)+"\n输入法兼容："+prefs.getBoolean("compatibility",true)+"\n最近服务状态："+prefs.getString("service_note","尚无记录")
                 +"\n解绑时开关："+prefs.getString("selection_at_disconnect","未记录")
                 +"\n最近异常类型："+prefs.getString("last_error","无记录")
                 +"\n最近进程退出（含升级退出）："+ServiceStatus.exitHistory(this)
@@ -217,7 +243,7 @@ public final class MainActivity extends Activity {
         TextView notes=text("仅在提供文字变化事件的输入框中工作，密码框会跳过。后台失效时，请检查手机的应用电池管理与服务状态。",14,MUTED,false);
         add(body,notes,0,12);
         add(body,text("本地识别，不联网、不保存输入文字。",14,MUTED,false),0,12);
-        add(body,text("0.3.1 修复试用版 · 微信兼容仍需真机复测",13,MUTED,false),0,8);
+        add(body,text("0.3.2 修复试用版 · 微信兼容仍需真机复测",13,MUTED,false),0,8);
         updateStatus();
     }
 

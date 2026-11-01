@@ -7,7 +7,7 @@ public final class TextTrigger {
     private int length, cursor;
     private boolean endedWithMj;
     public void reset(){known=false;}
-    private static char lower(char c){
+    static char lower(char c){
         if(c>='\uff21'&&c<='\uff3a')return (char)('a'+c-'\uff21');
         if(c>='\uff41'&&c<='\uff5a')return (char)('a'+c-'\uff41');
         return Character.toLowerCase(c);

@@ -27,6 +27,15 @@ public final class MjService extends AccessibilityService {
     private final TextTrigger localTrigger=new TextTrigger();
     private HandlerThread observerThread;
     private Handler observer;
+    private HandlerThread imeThread;
+    private Handler imeWorker;
+    private final SurroundingTrigger imeTrigger=new SurroundingTrigger();
+    private final AtomicInteger wechatTextEvents=new AtomicInteger(),imeReads=new AtomicInteger(),imeReadable=new AtomicInteger(),imeMatches=new AtomicInteger();
+    private final AtomicLong maxImeMs=new AtomicLong();
+    private volatile String imeState="微信兼容未开启",lastWechatImeState="尚未检查";
+    private volatile boolean wechatEditorFocused;
+    private boolean imeReadBusy;
+    private volatile long lastWechatEventAt;
     private volatile long inputEpoch;
     private final ArrayDeque<PendingEvent> pendingEvents=new ArrayDeque<>();
     private final AtomicInteger wechatEvents=new AtomicInteger(),wechatEditable=new AtomicInteger(),wechatMatches=new AtomicInteger(),inputErrors=new AtomicInteger(),droppedEvents=new AtomicInteger();
@@ -61,6 +70,7 @@ public final class MjService extends AccessibilityService {
         super.onCreate();ServiceStatus.installCrashRecorder(this);
         prefs=getSharedPreferences("mj",MODE_PRIVATE);decoder=Executors.newSingleThreadExecutor();
         observerThread=new HandlerThread("mj-input-observer");observerThread.start();observer=new Handler(observerThread.getLooper());
+        if(Build.VERSION.SDK_INT>=33){imeThread=new HandlerThread("mj-wechat-input");imeThread.start();imeWorker=new Handler(imeThread.getLooper());}
         power=(PowerManager)getSystemService(POWER_SERVICE);keyguard=(KeyguardManager)getSystemService(KEYGUARD_SERVICE);
     }
     @Override protected void onServiceConnected(){
@@ -72,14 +82,25 @@ public final class MjService extends AccessibilityService {
         settingsChanged();
     }
     private boolean canObserve(){return ready()&&prefs.getBoolean("enabled",false)&&power.isInteractive()&&!keyguard.isKeyguardLocked();}
+    private boolean wechatMode(){return Build.VERSION.SDK_INT>=33&&prefs.getBoolean("wechat_ime",false)&&prefs.getBoolean("wechat_ime_consent",false);}
+    private void nudgeIme(){if(wechatMode()){main.removeCallbacks(imeTick);main.post(imeTick);}}
     @Override public void onAccessibilityEvent(AccessibilityEvent event){
         if(!canObserve()||event==null||event.isPassword())return;
         if(event.getEventType()==AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
             &&(event.getContentChangeTypes()&AccessibilityEvent.CONTENT_CHANGE_TYPE_TEXT)==0)return;
         if(getPackageName().contentEquals(event.getPackageName()==null?"":event.getPackageName()))return;
         if("com.tencent.mm".contentEquals(event.getPackageName()==null?"":event.getPackageName())){
-            wechatEvents.incrementAndGet();String name=String.valueOf(event.getClassName());
+            wechatEvents.incrementAndGet();lastWechatEventAt=SystemClock.uptimeMillis();
+            if(event.getEventType()==AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED)wechatTextEvents.incrementAndGet();
+            String name=String.valueOf(event.getClassName());
             if(name.matches("[A-Za-z0-9_.$]{1,160}"))wechatClass=name;
+        }
+        boolean wechat="com.tencent.mm".contentEquals(event.getPackageName()==null?"":event.getPackageName());
+        if(wechat&&wechatMode()){nudgeIme();return;}
+        // Only text edits enter the FIFO. Layout/selection chatter is coalesced.
+        if(event.getEventType()!=AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED){
+            if(prefs.getBoolean("compatibility",true)){observer.removeCallbacks(focusCheck);observer.postDelayed(focusCheck,80);}
+            return;
         }
         PendingEvent copy=new PendingEvent(AccessibilityEvent.obtain(event),inputEpoch);
         synchronized(pendingEvents){
@@ -107,6 +128,7 @@ public final class MjService extends AccessibilityService {
     }
     private void processEvent(AccessibilityEvent event,long epoch){
         boolean wechat="com.tencent.mm".contentEquals(event.getPackageName()==null?"":event.getPackageName());
+        if(wechat&&wechatMode())return;
         AccessibilityNodeInfo node=null;
         try{
             node=editableSource(event);
@@ -166,19 +188,64 @@ public final class MjService extends AccessibilityService {
     private final Runnable focusCheck=new Runnable(){
         @Override public void run(){
             if(!connected||destroyed)return;
-            if(canObserve()&&prefs.getBoolean("compatibility",true)){
+            if(canObserve()&&prefs.getBoolean("compatibility",true)&&!(wechatMode()&&wechatEditorFocused)){
                 AccessibilityNodeInfo node=null;long start=SystemClock.uptimeMillis(),epoch=inputEpoch;activeReadStart=start;
                 try{
                     node=focusedInput();
                     if(node!=null&&!getPackageName().contentEquals(node.getPackageName()==null?"":node.getPackageName())){
                         boolean wechat="com.tencent.mm".contentEquals(node.getPackageName()==null?"":node.getPackageName());
                         if(wechat)wechatEditable.incrementAndGet();
-                        if(trigger.observe(node.getText(),node.getTextSelectionEnd(),false,true,field(node))&&SystemClock.uptimeMillis()-start<1800)requestEffect(epoch,wechat);
+                        if(!(wechat&&wechatMode())&&trigger.observe(node.getText(),node.getTextSelectionEnd(),false,true,field(node))&&SystemClock.uptimeMillis()-start<1800)requestEffect(epoch,wechat);
                     }
                 }catch(RuntimeException ignored){inputErrors.incrementAndGet();}
                 finally{if(node!=null)node.recycle();recordReadTime(SystemClock.uptimeMillis()-start);activeReadStart=0;}
             }
-            if(connected&&!destroyed&&prefs.getBoolean("enabled",false))observer.postDelayed(this,canObserve()&&prefs.getBoolean("compatibility",true)?350:1500);
+            if(connected&&!destroyed&&prefs.getBoolean("enabled",false)){observer.removeCallbacks(this);observer.postDelayed(this,canObserve()&&prefs.getBoolean("compatibility",true)?350:1500);}
+        }
+    };
+    private void requestImeEffect(long epoch,long context){
+        main.post(()->{
+            if(epoch!=inputEpoch||!canObserve()||!wechatMode())return;
+            try{
+                WechatInputBridge.Snapshot current=WechatInputBridge.capture(this);
+                if(!current.wechat||current.connection==null||current.context!=context)return;
+                imeMatches.incrementAndGet();wechatMatches.incrementAndGet();preview(random.nextInt(2));
+            }catch(RuntimeException error){lastWechatImeState="播放前输入连接已变化，请继续输入";}
+        });
+    }
+    private final Runnable imeTick=new Runnable(){
+        @Override public void run(){
+            if(!connected||destroyed||!ready()||!prefs.getBoolean("enabled",false)||!wechatMode())return;
+            if(!power.isInteractive()||keyguard.isKeyguardLocked()){
+                imeState="锁屏时暂停";wechatEditorFocused=false;imeWorker.post(()->imeTrigger.reset());main.postDelayed(this,1500);return;
+            }
+            if(imeReadBusy){main.postDelayed(this,100);return;}
+            WechatInputBridge.Snapshot snapshot;
+            try{snapshot=WechatInputBridge.capture(MjService.this);}catch(RuntimeException error){imeState="系统输入接口暂不可用";main.postDelayed(this,500);return;}
+            imeState=snapshot.state;wechatEditorFocused=snapshot.wechat;
+            if(snapshot.wechat||(snapshot.state.startsWith("系统")&&SystemClock.uptimeMillis()-lastWechatEventAt<3000))lastWechatImeState=snapshot.state;
+            if(snapshot.connection==null){imeWorker.post(()->imeTrigger.reset());main.postDelayed(this,250);return;}
+            imeReadBusy=true;final long epoch=inputEpoch;
+            imeWorker.post(()->{
+                long start=SystemClock.uptimeMillis();imeReads.incrementAndGet();
+                try{
+                    WechatInputBridge.Slice slice=WechatInputBridge.read(snapshot);
+                    if(epoch==inputEpoch&&canObserve()&&wechatMode()){
+                        if(slice==null||slice.text==null){lastWechatImeState="连接已建立，但微信未返回周边文字";}
+                        else if(slice.start!=slice.end){lastWechatImeState="选中文本时暂停识别";imeTrigger.reset();}
+                        else{
+                            imeReadable.incrementAndGet();lastWechatImeState=slice.offset<0?"已读取普通微信输入框（相对光标，不保存文字）":"已读取普通微信输入框（不保存文字）";
+                            if(imeTrigger.observe(slice.text,slice.start,slice.end,slice.offset,snapshot.context)){
+                                requestImeEffect(epoch,snapshot.context);
+                            }
+                        }
+                    }
+                }catch(RuntimeException error){lastWechatImeState="输入连接读取失败："+error.getClass().getSimpleName();}
+                finally{
+                    long ms=SystemClock.uptimeMillis()-start,old=maxImeMs.get();while(ms>old&&!maxImeMs.compareAndSet(old,ms))old=maxImeMs.get();
+                    main.post(()->{imeReadBusy=false;main.removeCallbacks(imeTick);if(connected&&!destroyed&&wechatMode())main.postDelayed(imeTick,150);});
+                }
+            });
         }
     };
     void localInput(CharSequence before,CharSequence text,int start,int removed,int added){
@@ -186,6 +253,9 @@ public final class MjService extends AccessibilityService {
     }
     void settingsChanged(){
         inputEpoch++;localTrigger.reset();clearInputEvents();observer.removeCallbacks(focusCheck);observer.post(()->trigger.reset());
+        main.removeCallbacks(imeTick);wechatEditorFocused=false;
+        if(imeWorker!=null)imeWorker.post(()->imeTrigger.reset());
+        if(wechatMode())main.post(imeTick);else imeState="微信兼容未开启";
         if(!ready()||!prefs.getBoolean("enabled",false))stopEffect();
         else{if(sounds==null)loadSounds();observer.post(focusCheck);}
         if(!prefs.getBoolean("sound",true))stopSound();
@@ -248,15 +318,17 @@ public final class MjService extends AccessibilityService {
     }
     private void stopSound(){pendingSound=-1;if(sounds!=null&&soundStream!=0)try{sounds.stop(soundStream);}catch(RuntimeException ignored){}soundStream=0;}
     private void stopEffect(){++generation;stopSound();if(overlay!=null){try{windows.removeViewImmediate(overlay);}catch(RuntimeException ignored){}overlay.clear();overlay=null;}}
-    String inputStats(){return "微信事件："+wechatEvents.get()+"；可读输入："+wechatEditable.get()+"；匹配："+wechatMatches.get()
+    String inputStats(){return "微信事件："+wechatEvents.get()+"（文字事件 "+wechatTextEvents.get()+"）；可读输入："+wechatEditable.get()+"；匹配："+wechatMatches.get()
+        +"\n微信兼容模式："+wechatMode()+"；输入连接状态："+imeState+"\n最近微信连接："+lastWechatImeState
+        +"\n微信连接读取："+imeReadable.get()+"/"+imeReads.get()+"；连接匹配："+imeMatches.get()+"；连接最长查询："+maxImeMs.get()+"ms"
         +"\n微信控件类："+wechatClass+"\n最长控件查询："+Math.max(maxReadMs.get(),activeReadStart==0?0:SystemClock.uptimeMillis()-activeReadStart)+"ms；读取异常："+inputErrors.get()+"；丢弃过期积压："+droppedEvents.get();}
     private void saveDisconnectSnapshot(){prefs.edit().putString("last_input_stats",inputStats())
         .putString("selection_at_disconnect",ServiceStatus.stateName(ServiceStatus.userSelection(this)))
         .putLong("disconnected_at",System.currentTimeMillis()).apply();}
-    private void disconnect(){connected=false;inputEpoch++;if(current==this)current=null;if(observer!=null){observer.removeCallbacks(focusCheck);clearInputEvents();}localTrigger.reset();stopEffect();}
+    private void disconnect(){connected=false;inputEpoch++;main.removeCallbacks(imeTick);wechatEditorFocused=false;if(imeWorker!=null)imeWorker.post(()->imeTrigger.reset());if(current==this)current=null;if(observer!=null){observer.removeCallbacks(focusCheck);clearInputEvents();}localTrigger.reset();stopEffect();}
     @Override public void onInterrupt(){stopEffect();}
     @Override public boolean onUnbind(Intent intent){saveDisconnectSnapshot();if(!userStopped)ServiceStatus.note(this,"系统已解绑服务；请核对设置中的开关与进程退出记录");disconnect();return super.onUnbind(intent);}
-    @Override public void onDestroy(){disconnect();destroyed=true;if(observerThread!=null)observerThread.quitSafely();if(decoder!=null)decoder.shutdownNow();if(sounds!=null){sounds.release();sounds=null;}super.onDestroy();}
+    @Override public void onDestroy(){disconnect();destroyed=true;if(observerThread!=null)observerThread.quitSafely();if(imeThread!=null)imeThread.quitSafely();if(decoder!=null)decoder.shutdownNow();if(sounds!=null){sounds.release();sounds=null;}super.onDestroy();}
     private static final class EffectView extends View {
         private Bitmap bitmap;private final Paint paint=new Paint(Paint.FILTER_BITMAP_FLAG);
         EffectView(Context context){super(context);setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);}
