@@ -12,6 +12,7 @@ import zipfile
 import hashlib
 import json
 import os
+import xml.etree.ElementTree as ET
 
 parser = argparse.ArgumentParser()
 for name in ['jdk','platform','tools','out']:
@@ -68,7 +69,8 @@ if not key.exists():
     run(jdk/'bin/keytool.exe','-genkeypair','-keystore',key,'-storepass','android',
         '-keypass','android','-alias','androiddebugkey','-keyalg','RSA','-keysize','2048',
         '-validity','10000','-dname','CN=MJ Local Development')
-apk = out/'MJ-Spiderman-Android-0.1.0.apk'
+version = ET.parse(root/'AndroidManifest.xml').getroot().attrib['{http://schemas.android.com/apk/res/android}versionName']
+apk = out/f'mj-spiderman-android-{version}.apk'
 signer = tools/'lib/apksigner.jar'
 run(java,'-jar',signer,'sign','--ks',key,'--ks-key-alias','androiddebugkey',
     '--ks-pass','pass:android','--key-pass','pass:android','--out',apk,aligned)

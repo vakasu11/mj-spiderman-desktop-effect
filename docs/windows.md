@@ -19,7 +19,7 @@ python -m pip install pyinstaller==6.22.3
 python build_windows.py
 ```
 
-生成 `dist/MJ-Spiderman.exe`，包含 Python 运行库与全部动画素材，可单独复制到其他 Windows x64 电脑。已构建的 EXE 和 ZIP 使用包可从 GitHub Releases 下载。
+生成 `dist/mj-spiderman.exe`，包含 Python 运行库与全部动画素材，可单独复制到其他 Windows x64 电脑。已构建的 EXE 和 ZIP 使用包可从 GitHub Releases 下载。
 
 ## 检查
 

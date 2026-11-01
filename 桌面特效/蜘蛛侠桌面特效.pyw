@@ -14,7 +14,7 @@ from ctypes import wintypes
 import tkinter as tk
 import winsound
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageTk, ImageOps
 
 # ===== DPI awareness 必须在创建任何 Tk 窗口之前设置 =====
 try:
@@ -28,7 +28,7 @@ except Exception:
 try:
     from pynput import keyboard
 except ImportError:
-    ctypes.windll.user32.MessageBoxW(0, '缺少 pynput，请先双击运行「安装依赖.bat」', '蜘蛛侠特效', 0x40)
+    ctypes.windll.user32.MessageBoxW(0, '缺少 pynput，请先双击运行「安装依赖.bat」', 'mj-spiderman', 0x40)
     sys.exit(1)
 
 # 单实例保护
@@ -57,7 +57,8 @@ except (OSError, ValueError):
     settings = {}
 matcher = TriggerMatcher('enter' if settings.get('mode') == 'enter' else 'instant')
 sound_enabled = settings.get('sound', True) is not False
-ICON = os.path.join(HERE, 'icon.ico')
+ASSETS = os.path.join(HERE, 'assets') if getattr(sys, 'frozen', False) else str(Path(HERE).parent / 'assets')
+ICON = os.path.join(ASSETS, 'app.ico')
 TRIGGER = 'mj'
 QUIT_WORD = 'stopmj'
 
@@ -74,14 +75,15 @@ EFFECTS = [
          wav=os.path.join(HERE, 'audio2.wav')),
 ]
 
-# 主窗口配色（深色蜘蛛侠主题）
-BG = '#14171f'
-PANEL = '#1d2330'
-FG = '#f2f4f8'
-MUTED = '#8b93a5'
-ACCENT = '#fe2c55'      # 蜘蛛侠红
-GREEN = '#2bd97c'
-GRAY = '#3a4150'
+# Shared visual tokens; dark ink with a Spider-Man red primary action.
+BG = '#15171d'
+PANEL = '#20242d'
+FG = '#f6f7fb'
+MUTED = '#aeb6c6'
+ACCENT = '#ce3045'
+GREEN = '#78d6b0'
+GRAY = '#343b49'
+BORDER = '#465062'
 
 # ---------------- Win32 ----------------
 user32 = ctypes.windll.user32
@@ -376,33 +378,52 @@ def on_close():
     root.destroy()
 
 
-root.title('蜘蛛侠特效 · MJ')
+root.title('mj-spiderman')
 root.configure(bg=BG)
 root.resizable(False, False)
 root.protocol('WM_DELETE_WINDOW', on_close)
 try:
     root.iconbitmap(ICON)
+    # Give the taskbar a stable identity independent of Python's executable.
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('vakasu11.mj-spiderman')
 except Exception:
     pass
+
+ui_scale = max(1.0, root.winfo_fpixels('1i') / 96.0)
+def u(n):
+    return max(1, round(n * ui_scale))
+
+def photo(name, size):
+    image = Image.open(os.path.join(ASSETS, name)).convert('RGBA')
+    image = ImageOps.contain(image, (u(size), u(size)), Image.Resampling.LANCZOS)
+    return ImageTk.PhotoImage(image)
+
+brand_photo = photo('logo.png', 48)
+preview_photos = [photo('preview1.png', 70), photo('preview2.png', 70)]
+
 
 def save_settings():
     try:
         CONFIG.write_text(json.dumps({'mode': matcher.mode, 'sound': sound_enabled}), encoding='utf-8')
     except OSError:
-        status.config(text='设置暂时无法保存，本次仍可正常使用')
+        status.config(text='设置暂时无法保存，本次仍可使用')
+
 
 def update_status():
-    btn.config(text='已开启 · 点击暂停' if enabled_flag else '已暂停 · 点击开启',
-               bg=GREEN if enabled_flag else GRAY,
-               fg='#08211a' if enabled_flag else FG)
+    btn.config(text='暂停特效' if enabled_flag else '开启特效')
+    state_dot.config(fg=GREEN if enabled_flag else MUTED)
+    state_label.config(text='特效已开启' if enabled_flag else '特效已暂停')
     status.config(text=('输入 mj 即刻触发' if matcher.mode == 'instant' else '输入 mj 后按回车触发')
-                  if enabled_flag else '已暂停，特效不会自动触发')
+                  if enabled_flag else '随时开启，也可以先试听')
+    mode_hint.config(text='无需回车' if matcher.mode == 'instant' else '按回车确认')
+
 
 def clear_effect():
     global anim_id
     anim_id += 1
     winsound.PlaySound(None, winsound.SND_PURGE)
     layered.update(Image.new('RGBA', (layered._cap_w, layered._cap_h)), WIN_X, WIN_Y)
+
 
 def toggle():
     global enabled_flag
@@ -412,11 +433,13 @@ def toggle():
         clear_effect()
     update_status()
 
+
 def change_mode():
     matcher.mode = mode_var.get()
     matcher.reset()
     update_status()
     save_settings()
+
 
 def change_sound():
     global sound_enabled
@@ -425,36 +448,117 @@ def change_sound():
         winsound.PlaySound(None, winsound.SND_PURGE)
     save_settings()
 
-body = tk.Frame(root, bg=BG, padx=32, pady=24)
-body.pack(fill='both', expand=True)
-tk.Label(body, text='蜘蛛侠特效', bg=BG, fg=FG, font=('Microsoft YaHei', 20, 'bold')).pack(anchor='w')
-tk.Label(body, text='MJ  /  两套原版动画随机播放', bg=BG, fg='#a8b1c2', font=('Microsoft YaHei', 10)).pack(anchor='w', pady=(6, 20))
-btn = tk.Button(body, command=toggle, font=('Microsoft YaHei', 13, 'bold'), bd=0,
-                padx=20, pady=12, activebackground='#a1edc1', cursor='hand2')
-btn.pack(fill='x')
-status = tk.Label(body, bg=BG, fg=FG, font=('Microsoft YaHei', 10))
-status.pack(pady=(10, 18))
+
+def label(parent, text, size=10, color=FG, **kwargs):
+    return tk.Label(parent, text=text, bg=parent.cget('bg'), fg=color,
+                    font=('Microsoft YaHei UI', size), **kwargs)
+
+
+def button(parent, text, command, primary=False, **kwargs):
+    fill = ACCENT if primary else PANEL
+    widget = tk.Button(parent, text=text, command=command, bg=fill, fg=FG,
+                        activebackground='#b92539' if primary else GRAY,
+                        activeforeground=FG, relief='flat', bd=0,
+                        highlightthickness=u(1), highlightbackground=fill,
+                        highlightcolor='#e9919c', cursor='hand2',
+                        font=('Microsoft YaHei UI', 11, 'bold' if primary else 'normal'),
+                        padx=u(12), pady=u(9), **kwargs)
+    widget.bind('<Enter>', lambda e: widget.config(bg='#b92539' if primary else GRAY))
+    widget.bind('<Leave>', lambda e: widget.config(bg=fill))
+    return widget
+
+
+viewport = tk.Canvas(root, bg=BG, highlightthickness=0)
+viewport.pack(side='left', fill='both', expand=True)
+scrollbar = tk.Scrollbar(root, orient='vertical', command=viewport.yview)
+viewport.configure(yscrollcommand=scrollbar.set)
+body = tk.Frame(viewport, bg=BG, padx=u(28), pady=u(22))
+body_window = viewport.create_window(0, 0, window=body, anchor='nw')
+body.bind('<Configure>', lambda e: viewport.configure(scrollregion=viewport.bbox('all')))
+viewport.bind('<Configure>', lambda e: viewport.itemconfigure(body_window, width=e.width))
+def scroll_body(event):
+    if body.winfo_reqheight() > viewport.winfo_height():
+        viewport.yview_scroll(-int(event.delta / 120), 'units')
+root.bind('<MouseWheel>', scroll_body)
+header = tk.Frame(body, bg=BG)
+header.pack(fill='x', pady=(0,u(18)))
+tk.Label(header, image=brand_photo, bg=BG).pack(side='left', padx=(0,u(10)))
+brand = tk.Frame(header, bg=BG)
+brand.pack(side='left', fill='x', expand=True)
+tk.Label(brand, text='mj-spiderman', font=('Segoe UI', 21, 'bold'),
+         bg=BG, fg=FG).pack(anchor='w')
+label(brand, '输入两个字母，召唤你的蜘蛛侠', 10, MUTED).pack(anchor='w', pady=(u(3),0))
+label(header, '1.1.0', 9, MUTED).pack(side='right', anchor='n', pady=u(7))
+
+hero = tk.Frame(body, bg=PANEL, padx=u(20), pady=u(14))
+hero.pack(fill='x')
+hero_top = tk.Frame(hero, bg=PANEL)
+hero_top.pack(fill='x')
+state_dot = label(hero_top, '●', 10, GREEN)
+state_dot.pack(side='left', padx=(0,u(6)))
+state_label = label(hero_top, '', 10)
+state_label.pack(side='left')
+mode_hint = label(hero_top, '', 9, MUTED)
+mode_hint.pack(side='right')
+hero_main = tk.Frame(hero, bg=PANEL)
+hero_main.pack(fill='x', pady=(u(10),0))
+keys = tk.Frame(hero_main, bg=PANEL)
+keys.pack(side='left')
+for ch in ['m','j']:
+    tk.Label(keys, text=ch, font=('Consolas', 27, 'bold'), bg=BG, fg=FG,
+             padx=u(15), pady=u(3), relief='flat', borderwidth=0,
+             highlightthickness=u(1), highlightbackground=BORDER).pack(side='left', padx=(0,u(7)))
+status = label(hero_main, '', 10, MUTED, justify='left')
+status.pack(side='left', padx=u(8))
+btn = button(body, '', toggle, primary=True)
+btn.pack(fill='x', pady=(u(12),u(20)))
+
+label(body, '触发方式', 11).pack(anchor='w', pady=(0,u(8)))
+segments = tk.Frame(body, bg=PANEL, padx=u(4), pady=u(4))
+segments.pack(fill='x')
 mode_var = tk.StringVar(value=matcher.mode)
-for label, value in [('输入 mj 立即触发', 'instant'), ('输入 mj 后按回车触发', 'enter')]:
-    tk.Radiobutton(body, text=label, variable=mode_var, value=value, command=change_mode,
-                   bg=BG, fg=FG, selectcolor=PANEL, activebackground=BG, activeforeground=FG,
-                   font=('Microsoft YaHei', 11), pady=3).pack(anchor='w')
+for text, value in [('立即触发', 'instant'), ('回车触发', 'enter')]:
+    tk.Radiobutton(segments, text=text, variable=mode_var, value=value, command=change_mode,
+                   indicatoron=False, relief='flat', bd=0, bg=PANEL, fg=FG,
+                   selectcolor=GRAY, activebackground=GRAY, activeforeground=FG,
+                   highlightthickness=u(1), highlightbackground=PANEL,
+                   highlightcolor='#e9919c', font=('Microsoft YaHei UI', 10),
+                   padx=u(12), pady=u(7), cursor='hand2').pack(side='left', expand=True, fill='x')
 sound_var = tk.BooleanVar(value=sound_enabled)
-tk.Checkbutton(body, text='播放声音', variable=sound_var, command=change_sound,
+sound_row = tk.Frame(body, bg=BG)
+sound_row.pack(fill='x', pady=(u(10),u(18)))
+tk.Checkbutton(sound_row, text='播放声音', variable=sound_var, command=change_sound,
                bg=BG, fg=FG, selectcolor=PANEL, activebackground=BG, activeforeground=FG,
-               font=('Microsoft YaHei', 11)).pack(anchor='w', pady=(8, 14))
+               highlightcolor='#e9919c', cursor='hand2', font=('Microsoft YaHei UI', 10),
+               padx=0, pady=u(5)).pack(side='left')
+label(sound_row, '关闭后仅播放动画', 9, MUTED).pack(side='right')
+
+preview_heading = tk.Frame(body, bg=BG)
+preview_heading.pack(fill='x', pady=(0,u(8)))
+label(preview_heading, '选一款，先试听', 11).pack(side='left')
+label(preview_heading, '自动触发时随机播放', 9, MUTED).pack(side='right')
 previews = tk.Frame(body, bg=BG)
 previews.pack(fill='x')
-for i, label in enumerate(['试听倒挂版', '试听荡蛛丝版']):
-    tk.Button(previews, text=label, command=lambda i=i: show_effect(EFFECTS[i]),
-              bg=PANEL, fg=FG, activebackground=GRAY, activeforeground=FG,
-              font=('Microsoft YaHei', 10), bd=0, padx=14, pady=10,
-              cursor='hand2').pack(side='left', expand=True, fill='x', padx=(0, 8) if i == 0 else 0)
-tk.Label(body, text='最小化后仍可触发；关闭窗口即可退出。\n英文输入 mj；退出口令：stopmj + 回车。',
-         bg=BG, fg='#a8b1c2', justify='left', font=('Microsoft YaHei', 9)).pack(anchor='w', pady=(18, 0))
+for i, text in enumerate(['倒挂版  试听', '荡蛛丝版  试听']):
+    preview = button(previews, text, lambda i=i: show_effect(EFFECTS[i]),
+                     image=preview_photos[i], compound='left')
+    preview.config(font=('Microsoft YaHei UI', 10), padx=u(7), pady=u(5))
+    preview.pack(side='left', expand=True, fill='x', padx=(0,u(10)) if i==0 else 0)
+
+tk.Frame(body, bg=GRAY, height=u(1)).pack(fill='x', pady=(u(18),u(12)))
+footer = tk.Frame(body, bg=BG)
+footer.pack(fill='x')
+label(footer, '最小化后仍可触发；关闭窗口退出。', 9, MUTED).pack(side='left')
+button(footer, '最小化', root.iconify).pack(side='right')
+label(body, '退出口令  stopmj + 回车', 9, MUTED).pack(anchor='w', pady=(u(4),0))
 update_status()
 root.update_idletasks()
-cw, ch = max(420, root.winfo_reqwidth()), root.winfo_reqheight()
+cw, ch = max(u(520), body.winfo_reqwidth()), body.winfo_reqheight()
+if ch > sh - u(70):
+    scrollbar.pack(side='right', fill='y')
+    cw += scrollbar.winfo_reqwidth()
+    ch = sh - u(70)
+viewport.configure(width=cw, height=ch)
 root.geometry('%dx%d+%d+%d' % (cw, ch, max(0, (sw-cw)//2), max(0, (sh-ch)//2)))
 
 def report_error(exc, value, tb):

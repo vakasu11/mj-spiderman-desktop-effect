@@ -1,12 +1,12 @@
 <div align="center">
 
-# 🕷️ 蜘蛛侠桌面特效
+# 🕷️ mj-spiderman
 
 **Spiderman Desktop Effect · Windows & Android**
 
 输入 `mj`，蜘蛛侠从天而降 🎉 每次随机播放一套原版动画！
 
-**[🖥️ 下载 Windows 版](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/windows-v1.0.0)** · **[📱 下载安卓试用版](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/android-v0.1.0)** · **[📦 全部版本](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases)**
+**[🖥️ 下载 Windows 版](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/windows-v1.1.0)** · **[📱 下载安卓试用版](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/android-v0.2.0)** · **[📦 全部版本](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases)**
 
 </div>
 
@@ -29,12 +29,20 @@
 | 💻 最小化运行 | Windows 控制窗口最小化后仍可触发，关闭窗口即可退出 |
 | ⚙️ 保存偏好 | 保存触发、声音等对应平台支持的设置 |
 
+## 🖼️ 界面预览
+
+<div align="center">
+<img src="assets/windows-preview.png" alt="mj-spiderman Windows 1.1.0 控制面板，包含触发方式、声音和两套动画试听" width="440" />
+</div>
+
+新版统一使用 `mj-spiderman` 名称、保持原比例的方形启动图标，以及深灰与蜘蛛侠红的控制界面。安卓采用同套配色，加入服务状态、试听和输入测试分区。
+
 ## 📥 下载入口
 
 | 平台 | 程序下载 | 要求与状态 |
 | --- | --- | --- |
-| 🖥️ Windows | **[直接下载 EXE](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.0.0/MJ-Spiderman.exe)** · [ZIP 使用包](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.0.0/MJ-Spiderman-Windows-1.0.0.zip) | Windows 10/11 x64；已在 Windows 11 x64 检查运行 |
-| 📱 Android | **[直接下载 APK](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.1.0/MJ-Spiderman-Android-0.1.0.apk)** | Android 11+；面向 iQOO 15 制作，尚未设备运行验收 |
+| 🖥️ Windows | **[直接下载 EXE](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.0/mj-spiderman.exe)** · [ZIP 使用包](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.0/mj-spiderman-windows-1.1.0.zip) | Windows 10/11 x64；已在 Windows 11 x64 检查运行 |
+| 📱 Android | **[直接下载 APK](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.2.0/mj-spiderman-android-0.2.0.apk)** | Android 11+；面向 iQOO 15 制作，尚未设备运行验收 |
 
 Windows EXE 约 70 MB，Android APK 约 40 MB。也可以进入 [Releases](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases)，展开对应版本的 **Assets（附件）** 下载。
 
@@ -44,9 +52,9 @@ Windows EXE 约 70 MB，Android APK 约 40 MB。也可以进入 [Releases](https
 
 ### 方式一：免安装运行（推荐）
 
-1. [下载 `MJ-Spiderman.exe`](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.0.0/MJ-Spiderman.exe)，也可下载 ZIP 使用包并解压。
+1. [下载 `mj-spiderman.exe`](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.0/mj-spiderman.exe)，也可下载 ZIP 使用包并解压。
 2. **把 EXE 放到电脑桌面，双击即可打开**。无需安装 Python，正常使用无需管理员权限。
-3. 看到“已开启”后，切到记事本等普通输入框，使用英文连续按 `m`、`j`。
+3. 看到“特效已开启”后，切到记事本等普通输入框，使用英文连续按 `m`、`j`。
 4. 蜘蛛侠随机出现并播放音效，播放后自动消失；最小化控制窗口后仍然有效。
 
 如果想把程序保存在其他文件夹，可右键 EXE 创建快捷方式，再把快捷方式放到桌面。当前版本需要手动放置文件或快捷方式，没有自动创建桌面图标或开机自启。
@@ -78,18 +86,18 @@ python "桌面特效/蜘蛛侠桌面特效.pyw"
 
 ### 第一步：下载并安装
 
-在手机浏览器 [下载 `MJ-Spiderman-Android-0.1.0.apk`](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.1.0/MJ-Spiderman-Android-0.1.0.apk)，下载完成后点击安装。如果系统要求允许该来源安装应用，请核对下载来源后按提示处理。
+在手机浏览器 [下载 `mj-spiderman-android-0.2.0.apk`](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.2.0/mj-spiderman-android-0.2.0.apk)，下载完成后点击安装。如果系统要求允许该来源安装应用，请核对下载来源后按提示处理。
 
 ### 第二步：开启服务
 
-1. 打开 **“MJ 蜘蛛侠特效”**。
-2. 点击 **“首次设置：开启无障碍服务”**，阅读权限说明。
+1. 打开 **“mj-spiderman”**。
+2. 点击 **“无障碍服务设置”**，阅读权限说明。
 3. 选择 **“了解，前往设置”**，在系统无障碍设置中手动开启同名服务。
-4. 返回应用，确认显示 **“已开启 · 输入 mj 即可触发”**。
+4. 返回应用，确认显示 **“特效已开启”**。
 
 ### 第三步：试听并测试
 
-1. 分别点击 **“试听倒挂版”** 和 **“试听荡蛛丝版”**，检查画面和声音。
+1. 分别点击 **“倒挂版  试听”** 和 **“荡蛛丝版  试听”**，检查画面和声音。
 2. 在应用自己的测试框切换英文输入，输入并提交 `mj`。
 3. 成功后再切换到其他应用的输入框试用。
 
@@ -115,6 +123,7 @@ iQOO 手机若后台一段时间后失效，先返回应用检查服务状态，
 ```text
 mj-spiderman-desktop-effect/
 ├── README.md                     # 项目介绍、两端下载与使用方法
+├── assets/                       # 方形图标、品牌图片、试听缩略图与界面预览
 ├── requirements.txt              # Windows Python 依赖
 ├── build_windows.py              # Windows 单文件 EXE 构建脚本
 ├── 桌面特效/
@@ -155,7 +164,7 @@ mj-spiderman-desktop-effect/
 | Windows | 完全退出旧程序，从 Windows 发布页下载新版 EXE，替换旧文件。设置保存在 `%LOCALAPPDATA%\MjSpidermanEffect`，替换 EXE 不会主动删除设置 |
 | Android | 从 Android 发布页下载新 APK，尝试覆盖安装。需要同一包名、相同签名与符合系统要求的版本号；请勿先卸载，以免清除设置。更新后重新检查无障碍服务和后台限制 |
 
-当前下载版本为 **Windows 1.0.0 / Android 0.1.0 试用版**。本次更新完善项目介绍与使用说明。
+当前下载版本为 **Windows 1.1.0 / Android 0.2.0 试用版**。本次更新统一名称、修正图标比例，并重做两端控制界面。详见 [更新记录](CHANGELOG.md)。
 
 ## ❓ 常见问题
 
