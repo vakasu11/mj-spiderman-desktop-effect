@@ -6,7 +6,7 @@
 
 输入 `mj`，蜘蛛侠从天而降 🎉 每次随机播放一套原版动画！
 
-**[🖥️ 下载 Windows 版](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/windows-v1.1.0)** · **[📱 下载安卓试用版](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/android-v0.2.0)** · **[📦 全部版本](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases)**
+**[🖥️ 下载 Windows 版](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/windows-v1.1.1)** · **[📱 下载安卓试用版](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/android-v0.2.0)** · **[📦 全部版本](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases)**
 
 </div>
 
@@ -32,7 +32,7 @@
 ## 🖼️ 界面预览
 
 <div align="center">
-<img src="assets/windows-preview.png" alt="mj-spiderman Windows 1.1.0 控制面板，包含触发方式、声音和两套动画试听" width="440" />
+<img src="assets/windows-preview.png" alt="mj-spiderman Windows 控制面板，包含触发方式、声音和两套动画试听" width="440" />
 </div>
 
 新版统一使用 `mj-spiderman` 名称、保持原比例的方形启动图标，以及深灰与蜘蛛侠红的控制界面。安卓采用同套配色，加入服务状态、试听和输入测试分区。
@@ -41,7 +41,7 @@
 
 | 平台 | 程序下载 | 要求与状态 |
 | --- | --- | --- |
-| 🖥️ Windows | **[直接下载 EXE](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.0/mj-spiderman.exe)** · [ZIP 使用包](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.0/mj-spiderman-windows-1.1.0.zip) | Windows 10/11 x64；已在 Windows 11 x64 检查运行 |
+| 🖥️ Windows | **[直接下载 EXE](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.1/mj-spiderman.exe)** · [ZIP 使用包](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.1/mj-spiderman-windows-1.1.1.zip) | Windows 10/11 x64；已在 Windows 11 x64 检查运行 |
 | 📱 Android | **[直接下载 APK](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.2.0/mj-spiderman-android-0.2.0.apk)** | Android 11+；面向 iQOO 15 制作，尚未设备运行验收 |
 
 Windows EXE 约 70 MB，Android APK 约 40 MB。也可以进入 [Releases](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases)，展开对应版本的 **Assets（附件）** 下载。
@@ -52,7 +52,7 @@ Windows EXE 约 70 MB，Android APK 约 40 MB。也可以进入 [Releases](https
 
 ### 方式一：免安装运行（推荐）
 
-1. [下载 `mj-spiderman.exe`](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.0/mj-spiderman.exe)，也可下载 ZIP 使用包并解压。
+1. [下载 `mj-spiderman.exe`](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.1/mj-spiderman.exe)，也可下载 ZIP 使用包并解压。
 2. **把 EXE 放到电脑桌面，双击即可打开**。无需安装 Python，正常使用无需管理员权限。
 3. 看到“特效已开启”后，切到记事本等普通输入框，使用英文连续按 `m`、`j`。
 4. 蜘蛛侠随机出现并播放音效，播放后自动消失；最小化控制窗口后仍然有效。
@@ -164,7 +164,7 @@ mj-spiderman-desktop-effect/
 | Windows | 完全退出旧程序，从 Windows 发布页下载新版 EXE，替换旧文件。设置保存在 `%LOCALAPPDATA%\MjSpidermanEffect`，替换 EXE 不会主动删除设置 |
 | Android | 从 Android 发布页下载新 APK，尝试覆盖安装。需要同一包名、相同签名与符合系统要求的版本号；请勿先卸载，以免清除设置。更新后重新检查无障碍服务和后台限制 |
 
-当前下载版本为 **Windows 1.1.0 / Android 0.2.0 试用版**。本次更新统一名称、修正图标比例，并重做两端控制界面。详见 [更新记录](CHANGELOG.md)。
+当前下载版本为 **Windows 1.1.1 / Android 0.2.0 试用版**。Windows 1.1.1 放大桌面头像图标，保留 1.1.0 的新版界面。详见 [更新记录](CHANGELOG.md)。
 
 ## ❓ 常见问题
 
