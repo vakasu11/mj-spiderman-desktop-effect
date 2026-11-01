@@ -7,7 +7,11 @@ public final class TextTrigger {
     private int length, cursor;
     private boolean endedWithMj;
     public void reset(){known=false;}
-    private static char lower(char c){return Character.toLowerCase(c);}
+    private static char lower(char c){
+        if(c>='\uff21'&&c<='\uff3a')return (char)('a'+c-'\uff21');
+        if(c>='\uff41'&&c<='\uff5a')return (char)('a'+c-'\uff41');
+        return Character.toLowerCase(c);
+    }
     private static long fingerprint(CharSequence s){
         long h=0xcbf29ce484222325L;
         for(int i=0;i<s.length();i++){h^=lower(s.charAt(i));h*=0x100000001b3L;}

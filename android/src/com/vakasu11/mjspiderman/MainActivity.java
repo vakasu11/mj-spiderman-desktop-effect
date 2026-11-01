@@ -175,11 +175,11 @@ public final class MainActivity extends Activity {
         testTitle.setLabelFor(test.getId());
         test.setSingleLine(true);
         test.setTextColor(FG);test.setHintTextColor(MUTED);test.setTextSize(17);
-        test.setHint("切换英文输入，键入 mj");
+        test.setHint("中文或英文输入法，键入 mj");
         test.setMinHeight(dp(56));
         test.setPadding(dp(16),dp(12),dp(16),dp(12));
         test.setBackground(focusShape());
-        test.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        test.setInputType(InputType.TYPE_CLASS_TEXT);
         test.addTextChangedListener(new TextWatcher(){
             private String before="";
             @Override public void beforeTextChanged(CharSequence text,int start,int count,int after){before=text.toString();}
@@ -191,7 +191,7 @@ public final class MainActivity extends Activity {
             @Override public void afterTextChanged(Editable text){before="";}
         });
         add(body,test,12,8);
-        add(body,text("先在这里输入并提交英文 mj，成功后再到其他应用试用。",14,MUTED,false),0,24);
+        add(body,text("中文或英文输入法都可试 mj（含全角ｍｊ）。若拼音候选未出现在输入框中，请先提交英文字母。",14,MUTED,false),0,24);
         add(body,button("停止并关闭无障碍服务",false,()->{
             new AlertDialog.Builder(this).setTitle("停止特效？").setMessage("这会关闭系统无障碍服务。只想临时暂停，请使用上方的暂停按钮。")
                 .setNegativeButton("取消",null).setPositiveButton("停止并关闭",(d,w)->{
@@ -199,10 +199,17 @@ public final class MainActivity extends Activity {
                 }).show();
         }),0,12);
         add(body,button("复制诊断信息",false,()->{
-            String info="mj-spiderman Android 0.3.0\n系统服务开关："+(ServiceStatus.systemEnabled(this)?"开":"关")
-                +"\n实际连接："+(MjService.active()!=null?"已连接":"未连接")+"\n自动触发："+prefs.getBoolean("enabled",false)
+            MjService service=MjService.active();
+            String info="mj-spiderman Android 0.3.1\nAndroid "+android.os.Build.VERSION.RELEASE+" / SDK "+android.os.Build.VERSION.SDK_INT
+                +"\n系统服务开关（设置项）："+ServiceStatus.stateName(ServiceStatus.userSelection(this))
+                +"\n无障碍总状态："+ServiceStatus.stateName(ServiceStatus.masterEnabled(this))
+                +"\n系统绑定列表："+(ServiceStatus.systemBound(this)?"有":"无")
+                +"\n实际连接："+(service!=null?"已连接":"未连接")+"\n自动触发："+prefs.getBoolean("enabled",false)
                 +"\n输入法兼容："+prefs.getBoolean("compatibility",true)+"\n最近服务状态："+prefs.getString("service_note","尚无记录")
-                +"\n最近异常类型："+prefs.getString("last_error","无记录");
+                +"\n解绑时开关："+prefs.getString("selection_at_disconnect","未记录")
+                +"\n最近异常类型："+prefs.getString("last_error","无记录")
+                +"\n最近进程退出（含升级退出）："+ServiceStatus.exitHistory(this)
+                +"\n"+(service!=null?service.inputStats():prefs.getString("last_input_stats","无输入检查记录"));
             ((android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("mj-spiderman 诊断",info));
             Toast.makeText(this,"已复制诊断信息，不包含输入文字",Toast.LENGTH_SHORT).show();
         }),0,20);
@@ -210,7 +217,7 @@ public final class MainActivity extends Activity {
         TextView notes=text("仅在提供文字变化事件的输入框中工作，密码框会跳过。后台失效时，请检查手机的应用电池管理与服务状态。",14,MUTED,false);
         add(body,notes,0,12);
         add(body,text("本地识别，不联网、不保存输入文字。",14,MUTED,false),0,12);
-        add(body,text("0.3.0 修复试用版 · 兼容性仍需真机复测",13,MUTED,false),0,8);
+        add(body,text("0.3.1 修复试用版 · 微信兼容仍需真机复测",13,MUTED,false),0,8);
         updateStatus();
     }
 
@@ -227,7 +234,7 @@ public final class MainActivity extends Activity {
     }
     private void showServiceHelp(){
         new AlertDialog.Builder(this).setTitle("服务开启后自动关闭？")
-            .setMessage("先在本应用完成首次说明，再到系统设置开启 mj-spiderman。\n\n如果仍自动关闭：在应用信息中检查电池和后台运行限制；菜单名称因 iQOO 系统版本而异。服务开关由系统管理，应用不能替你强制开启。\n\n若开关仍开但未连接，请手动关闭后重新开启。再次发生时，可复制本页诊断信息发来排查。")
+            .setMessage("先在本应用完成首次说明，再到系统设置开启 mj-spiderman。\n\n如果仍自动关闭：在应用信息中检查电池和后台运行限制。iQOO 可在设置中搜索“后台耗电管理”，若有此选项则允许本应用后台高耗电；菜单名称因系统版本而异。服务开关由系统管理，应用不能替你强制开启。若设置仍开但连接断开，不等于你关闭了权限。\n\n若开关仍开但未连接，请手动关闭后重新开启。再次发生时，可复制本页诊断信息发来排查。")
             .setNegativeButton("返回",null).setPositiveButton("打开应用信息",(d,w)->startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName())))).show();
     }
     private void preview(int index) {
@@ -238,13 +245,13 @@ public final class MainActivity extends Activity {
     private void updateStatus() {
         if(status==null)return;
         MjService service=MjService.active();boolean bound=service!=null;
-        boolean authorized=bound||ServiceStatus.systemEnabled(this);
+        int selected=ServiceStatus.userSelection(this);boolean authorized=selected==1||bound;boolean unknown=selected<0;
         boolean disclosed=prefs.getBoolean("disclosed",false);
         boolean enabled=bound&&disclosed&&prefs.getBoolean("enabled",false);
-        String state=!disclosed?"等待完成首次说明":!bound?(authorized?"系统已授权，等待连接":"服务已关闭"):enabled?"特效已开启":"特效已暂停";
+        String state=!disclosed?"等待完成首次说明":!bound?(authorized?"已授权，连接已断开":unknown?"暂无法确认系统开关":"服务已关闭"):enabled?"特效已开启":"特效已暂停";
         if(!state.contentEquals(stateLabel.getText()))stateLabel.setText(state);
         stateLabel.setTextColor(enabled?GREEN:MUTED);
-        status.setText(!disclosed?"先阅读应用内说明，再开启识别":!bound?(authorized?"若一直未连接，请在系统设置关闭后再开启":"请到无障碍设置手动开启 mj-spiderman"):enabled?"输入 mj 或连续 mjmj，召唤蜘蛛侠":"随时开启，也可以先试听");
+        status.setText(!disclosed?"先阅读应用内说明，再开启识别":!bound?(authorized?"系统仍选中本服务，请关闭后重新开启来连接":unknown?"系统不允许读取开关，请到设置中核对":"请到无障碍设置手动开启 mj-spiderman"):enabled?"中英文输入法键入 mj，召唤蜘蛛侠":"随时开启，也可以先试听");
         toggle.setText(!disclosed?"完成首次说明":!bound?(authorized?"重新连接服务":"开始设置"):enabled?"暂停特效":"开启特效");
         if(connectionHint!=null){
             String note=prefs.getString("service_note","");String error=prefs.getString("last_error","");

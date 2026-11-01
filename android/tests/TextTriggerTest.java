@@ -34,6 +34,13 @@ public class TextTriggerTest {
         check(!t.changed("m","mj",1,0,0,false,true,1));
         t.reset();check(!t.changed("abmj","amj",1,0,1,false,true,1));
         check(t.changed("amj","amjmj",3,2,0,false,true,1));
+        t.reset();check(!edit(t,"","ｍ",0,1,0));check(edit(t,"ｍ","ｍｊ",1,1,0));
+        check(!edit(t,"ｍｊ","ＭＪ",0,2,2));check(!edit(t,"ＭＪ","mj",0,2,2));
+        check(!edit(t,"mj","梦境",0,2,2));check(!edit(t,"梦境","梦境m",2,1,0));
+        check(edit(t,"梦境m","梦境mj",3,1,0));
+        t.reset();check(edit(t,"","中文ＭＪ测试",0,6,0));
+        t.reset();t.prime("中文ｍ",3,9);check(t.observe("中文ｍｊ",4,false,true,9));
+        check(!t.observe("中文ｍｊ",4,false,true,9));
         // Realistic composing updates replace the whole word, not one appended letter.
         t.reset();String before="";for(int n=1;n<=80;n++){
             String after=before+(n%2==1?"m":"j");

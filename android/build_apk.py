@@ -49,8 +49,11 @@ run(javac,'-encoding','UTF-8','--release','8','-classpath',android_jar,
     '-d',classes,'@'+str(source_list))
 tests = work/'test-classes'
 tests.mkdir(exist_ok=True)
-run(javac,'-encoding','UTF-8','-d',tests,root/'src/com/vakasu11/mjspiderman/TextTrigger.java',root/'tests/TextTriggerTest.java')
-run(java,'-cp',tests,'com.vakasu11.mjspiderman.TextTriggerTest')
+run(javac,'-encoding','UTF-8','-d',tests,
+    root/'src/com/vakasu11/mjspiderman/TextTrigger.java',root/'tests/TextTriggerTest.java',
+    root/'src/com/vakasu11/mjspiderman/ServiceSelection.java',root/'tests/ServiceSelectionTest.java')
+for test_name in ['TextTriggerTest','ServiceSelectionTest']:
+    run(java,'-cp',tests,'com.vakasu11.mjspiderman.'+test_name)
 jar = work/'classes.jar'
 with zipfile.ZipFile(jar,'w') as z:
     for p in classes.rglob('*.class'): z.write(p,p.relative_to(classes).as_posix())
