@@ -1,12 +1,20 @@
 # Android 0.3.2 微信兼容试用版
 
-支持 Android 11+；新增的 **微信兼容模式需要 Android 13+**。它针对“服务已连接、其他应用能触发，但微信事件无法识别 mj”的情况提供另一条识别路径。**本版已完成编译和逻辑检查，尚未完成真机或模拟器运行复测，不能据此认定微信问题已解决。**
+支持 Android 11+；新增的 **微信兼容模式需要 Android 13+**。它针对“服务已连接、其他应用能触发，但微信事件无法识别 mj”的情况提供另一条识别路径。**本版已完成编译与逻辑检查，并收到 iQOO 15 / Android 17 用户在关闭高级保护后可以使用的反馈；更多设备、输入法及长期后台表现仍待验证。**
 
 ## 下载与覆盖更新
 
 手机浏览器 [直接下载 APK](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.3.2/mj-spiderman-android-0.3.2.apk)，或打开 [发布页](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/tag/android-v0.3.2)，在 Assets 选择 `mj-spiderman-android-0.3.2.apk`。`Source code` 是源码。
 
 包名与签名沿用旧版，versionCode=5，可覆盖更新；请勿先卸载，以免清除设置。应用无内置自动更新。
+
+## Android 17：开启后又自动关闭
+
+Android 17 开启 **“高级保护 / Advanced Protection”** 时，会限制未获认定的非辅助工具类应用使用无障碍服务；本项目是娱乐特效应用。[Google 官方说明](https://blog.google/security/android-advanced-protection-updates/)
+
+如果服务刚开启就又显示关闭，先在设置里查看高级保护状态。**若选择临时关闭以测试，会同时降低该模式提供的其他安全保护，请自行决定。** 保留高级保护时，本应用的跨应用自动触发可能无法使用。应用不会绕过系统限制或冒充辅助工具。
+
+自愿关闭该模式后，按系统提示处理重启（如有），再手动开启同名无障碍服务，确认实际连接；需要微信识别时，单独开启“微信兼容模式”并同意说明。若服务仍断开，复制诊断继续排查，不应将所有情况都归因于高级保护。
 
 ## 微信兼容模式：更新后需要手动开启
 
@@ -59,6 +67,6 @@ python android/build_apk.py --jdk "JDK目录" --platform "SDK/platforms/android-
 
 215 项文字匹配、14 项系统设置解析、29 项周边文字识别检查通过；APK 编译、v3 签名、对齐及 248 个原始媒体文件逐字节校验通过。覆盖安装使用同一签名。音效在 APK 中不压缩；开发私钥位于被 Git 忽略的 `work/android-development.keystore`，不得提交或分发，后续覆盖更新需要保留它。
 
-上述检查不包含手机端运行证明。微信输入连接、中文组合输入及 Android 17 等实际系统兼容性仍需设备复测。
+2026-11-01 真机反馈：用户在 iQOO 15 / Android 17 上关闭高级保护后反馈已可以使用。该反馈仅覆盖本次设备与操作，未完成长期后台、多机型或全部输入法验证。尚无独立测试人员或自动化真机测试报告；不据此声称所有中文组合输入和微信版本均兼容。
 
 [返回项目首页](../README.md) · [原作者与素材来源](https://github.com/f20880479-lab/mj-spiderman-desktop-effect)

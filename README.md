@@ -14,7 +14,7 @@
 
 ✨ 一个有趣的桌面特效小应用：Windows 启动后监听按键，连续输入 `mj`，屏幕顶部就会出现带声音的透明蜘蛛侠动画，播放完自动消失。支持最小化运行、反复触发、暂停和静音，也提供独立的安卓试用版。
 
-> Windows 默认**输入 mj 立即触发**，不用回车，也可切换成回车触发。Android 0.3.2 新增默认关闭的“微信兼容模式”（Android 13+），通过系统输入连接尝试识别中文 / 英文输入法公开的 mj 和全角ｍｊ；新版仍需真机复测。
+> Windows 默认**输入 mj 立即触发**，不用回车，也可切换成回车触发。Android 0.3.2 新增默认关闭的“微信兼容模式”（Android 13+），通过系统输入连接尝试识别中文 / 英文输入法公开的 mj 和全角ｍｊ；已有 iQOO 15 / Android 17 用户反馈在关闭高级保护后可以使用，兼容范围见下文。
 
 ## 🎯 功能亮点
 
@@ -42,7 +42,7 @@
 | 平台 | 程序下载 | 要求与状态 |
 | --- | --- | --- |
 | 🖥️ Windows | **[直接下载 EXE](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.2/mj-spiderman.exe)** · [ZIP 使用包](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/windows-v1.1.2/mj-spiderman-windows-1.1.2.zip) | Windows 10/11 x64；已在 Windows 11 x64 检查运行 |
-| 📱 Android | **[直接下载 APK](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.3.2/mj-spiderman-android-0.3.2.apk)** | Android 11+；面向 iQOO 15 制作，尚未设备运行验收 |
+| 📱 Android | **[直接下载 APK](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.3.2/mj-spiderman-android-0.3.2.apk)** | Android 11+；iQOO 15 / Android 17 已有用户成功反馈，更多设备与长期运行待验证 |
 
 Windows EXE 约 70 MB，Android APK 约 40 MB。也可以进入 [Releases](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases)，展开对应版本的 **Assets（附件）** 下载。
 
@@ -88,6 +88,14 @@ python "桌面特效/蜘蛛侠桌面特效.pyw"
 
 在手机浏览器 [下载 `mj-spiderman-android-0.3.2.apk`](https://github.com/vakasu11/mj-spiderman-desktop-effect/releases/download/android-v0.3.2/mj-spiderman-android-0.3.2.apk)，下载完成后点击安装。如果系统要求允许该来源安装应用，请核对下载来源后按提示处理。
 
+### Android 17：开启后又自动关闭
+
+Android 17 开启 **“高级保护 / Advanced Protection”** 时，会限制未获认定的非辅助工具类应用使用无障碍服务；本项目是娱乐特效应用。[Google 官方说明](https://blog.google/security/android-advanced-protection-updates/)
+
+如果服务刚开启就又显示关闭，先在设置里查看高级保护状态。**若选择临时关闭以测试，会同时降低该模式提供的其他安全保护，请自行决定。** 保留高级保护时，本应用的跨应用自动触发可能无法使用。应用不会绕过系统限制或冒充辅助工具。
+
+自愿关闭该模式后，按系统提示处理重启（如有），再手动开启同名无障碍服务，确认实际连接；需要微信识别时，单独开启“微信兼容模式”并同意说明。若服务仍断开，复制诊断继续排查，不应将所有情况都归因于高级保护。
+
 ### 第二步：开启服务
 
 1. 打开 **“mj-spiderman”**。
@@ -122,7 +130,7 @@ Android 0.3.2 默认开启 **“输入法兼容”**，会补查当前输入框�
 - [演示视频一](8月21日.mp4)
 - [演示视频二](8月24日.mp4)
 
-演示视频来自原项目，用于展示原版特效，不代表当前安卓版本已经通过真机验证。
+演示视频来自原项目，用于展示原版特效；安卓使用反馈与验证范围见下文。
 
 ## 📂 目录结构
 
@@ -181,7 +189,7 @@ mj-spiderman-desktop-effect/
 | 安卓已授权但未连接 | 在系统设置手动关闭服务再开启，返回应用确认实际连接状态 |
 | 安卓试听正常，其他应用不触发 | 先测试本应用输入框并提交英文 mj；目标输入框可能没有可用的文本变化事件 |
 | 只有微信不触发 | 开启微信兼容模式并确认说明，手动重新开启无障碍服务，再到微信输入框测试；系统或微信可能不提供输入连接 |
-| 安卓服务自动关闭 | 完成首次说明，查看后台运行帮助；仍关闭时复制诊断信息排查 |
+| 安卓服务自动关闭 | Android 17 先查看高级保护状态；完成首次说明，检查后台限制，仍失败时复制诊断信息 |
 | 有画面没有声音 | 检查声音开关、媒体音量、输出设备和勿扰设置；勿扰是否允许媒体由系统决定 |
 
 仍有问题，可到 [Issues](https://github.com/vakasu11/mj-spiderman-desktop-effect/issues) 提供系统与应用版本、试听结果、应用内输入结果和复现步骤，请勿提交密码或私人输入内容。
@@ -199,7 +207,7 @@ Windows 不联网、不记录或上传输入文字，内存识别缓冲最多 8 
 <summary><strong>🧪 已完成的检查与验证范围</strong></summary>
 
 - **Windows：** 12 项触发逻辑测试通过；源码与最终 EXE 的两套动画播放、自动退出、实际 mj 触发、暂停和退出口令已检查。已在 Windows 11 x64 运行；未独立验证扬声器实际听感，未覆盖全部多屏、高 DPI、管理员窗口和游戏组合。
-- **Android 0.3.2：** 215 项文字匹配检查、14 项系统开关解析检查、29 项周边文字识别检查、编译、签名、对齐和 248 个原始媒体文件校验通过；与旧版签名相同。**此修复版尚未完成真机复测**，微信与输入法兼容、无障碍持续连接和音频仍需设备确认。
+- **Android 0.3.2：** 215 项文字匹配检查、14 项系统开关解析检查、29 项周边文字识别检查、编译、签名、对齐和 248 个原始媒体文件校验通过；与旧版签名相同。用户在 iQOO 15 / Android 17 上关闭高级保护后反馈已可以使用。该反馈仅覆盖本次设备与操作，未完成长期后台、多机型或全部输入法验证。用户反馈不等于所有场景通过验收。
 
 </details>
 
